@@ -67,35 +67,35 @@
 
 ## Phase 3 — Storefront and product details
 
-- [ ] **T-STORE-001** Implement the home, featured/latest, listing, category, search-entry, responsive navigation/cart-count placeholder, footer, and shared feedback/empty-state shell.
+- [x] **T-STORE-001** Implement the home, featured/latest, listing, category, search-entry, responsive navigation/cart-count placeholder, footer, and shared feedback/empty-state shell.
 - [ ] **T-PROD-001** Implement product create/read persistence and public active/category visibility rules for every specified product field.
-- [ ] **T-PROD-002** Implement product detail projection/view with fallback image, price/discount, stock, category, quantity selector, add placeholder, and bounded same-category related products.
+- [x] **T-PROD-002** Implement product detail projection/view with fallback image, price/discount, stock, category, quantity selector, add placeholder, and bounded same-category related products.
 - [ ] Add unique slug generation/validation and active-category checks to public queries.
-- [ ] Add active-only home queries with deterministic featured/latest ordering.
-- [ ] Add storefront 404 and missing-image behavior.
+- [x] Add active-only home queries with deterministic featured/latest ordering.
+- [x] Add storefront 404 and missing-image behavior.
 - [ ] Add service/web tests for public visibility, detail content, slugs, related products, and empty catalog.
 - [ ] Run build/test and manually inspect home/list/category/detail at initial mobile/desktop widths.
 
 ### Phase 3 Definition of Done
 
-- [ ] Public pages expose no inactive product/category.
-- [ ] Every product detail requirement renders from a view model, not an entity.
-- [ ] Empty and missing states are friendly and safe.
+- [x] Public pages expose no inactive product/category.
+- [x] Every product detail requirement renders from a view model, not an entity.
+- [x] Empty and missing states are friendly and safe.
 
 ## Phase 4 — Search, filter, sort, and pagination
 
-- [ ] **T-QUERY-001** Implement one normalized query supporting keyword, category, minimum price, maximum price, and in-stock filters together.
-- [ ] **T-QUERY-002** Implement all five allow-listed sorts, stable secondary ordering, bounded pagination, and query-parameter retention.
-- [ ] Reject/normalize invalid min/max, page, page size, category, and sort values with friendly behavior.
-- [ ] Verify effective-price filtering/sorting translates to exact SQLite integer columns.
+- [x] **T-QUERY-001** Implement one normalized query supporting keyword, category, minimum price, maximum price, and in-stock filters together.
+- [x] **T-QUERY-002** Implement all five allow-listed sorts, stable secondary ordering, bounded pagination, and query-parameter retention.
+- [x] Reject/normalize invalid min/max, page, page size, category, and sort values with friendly behavior.
+- [x] Verify effective-price filtering/sorting translates to exact SQLite integer columns.
 - [ ] Add combined-filter/sort/page matrix tests and stable page-boundary tests.
 - [ ] Manually bookmark/reload filtered URLs and confirm visible form selections match the URL.
 
 ### Phase 4 Definition of Done
 
-- [ ] Every requested filter and sort works alone and in combination.
-- [ ] Pagination never drops relevant state and invalid query values are safe.
-- [ ] Generated SQL uses bounded parameterized predicates and deterministic ordering.
+- [x] Every requested filter and sort works alone and in combination.
+- [x] Pagination never drops relevant state and invalid query values are safe.
+- [x] Generated SQL uses bounded parameterized predicates and deterministic ordering.
 
 ## Phase 5 — Shopping carts and merge
 

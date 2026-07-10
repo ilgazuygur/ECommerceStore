@@ -1,21 +1,15 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using ECommerceStore.Web.Models;
+using ECommerceStore.Web.Services.Catalog;
 
 namespace ECommerceStore.Web.Controllers;
 
-public class HomeController : Controller
+public class HomeController(IProductQueryService products) : Controller
 {
-    private readonly ILogger<HomeController> _logger;
-
-    public HomeController(ILogger<HomeController> logger)
+    public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
-        _logger = logger;
-    }
-
-    public IActionResult Index()
-    {
-        return View();
+        return View(await products.GetHomeAsync(cancellationToken));
     }
 
     public IActionResult Privacy()
@@ -27,5 +21,13 @@ public class HomeController : Controller
     public IActionResult Error()
     {
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+    }
+
+    [Route("status/{code:int}")]
+    [ActionName("StatusCode")]
+    public IActionResult HandleStatusCode(int code)
+    {
+        Response.StatusCode = code;
+        return code == StatusCodes.Status404NotFound ? View("NotFound") : View("StatusCode", code);
     }
 }

@@ -1,47 +1,73 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - ECommerceStore.Web</title>
+    <meta name="description" content="Thoughtfully selected everyday goods from ECommerceStore." />
+    <title>@ViewData["Title"] · ECommerceStore</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/ECommerceStore.Web.styles.css" asp-append-version="true" />
 </head>
 <body>
-    <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">ECommerceStore.Web</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                        aria-expanded="false" aria-label="Toggle navigation">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <header class="site-header sticky-top">
+        <nav class="navbar navbar-expand-lg" aria-label="Primary navigation">
+            <div class="container py-2">
+                <a class="navbar-brand brand-mark" asp-controller="Home" asp-action="Index" aria-label="ECommerceStore home">
+                    <span class="brand-dot"></span>ECommerceStore
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavigation" aria-controls="mainNavigation" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
+                <div class="collapse navbar-collapse" id="mainNavigation">
+                    <ul class="navbar-nav me-auto ms-lg-4">
+                        <li class="nav-item"><a class="nav-link" asp-controller="Home" asp-action="Index">Home</a></li>
+                        <li class="nav-item"><a class="nav-link" asp-controller="Catalog" asp-action="Index">Shop</a></li>
+                    </ul>
+                    <form class="header-search d-flex my-3 my-lg-0" asp-controller="Catalog" asp-action="Index" method="get" role="search">
+                        <label class="visually-hidden" for="headerKeyword">Search products</label>
+                        <input id="headerKeyword" class="form-control" name="Keyword" maxlength="100" placeholder="Search the collection" />
+                        <button class="btn btn-dark" type="submit">Search</button>
+                    </form>
+                    <ul class="navbar-nav ms-lg-3 align-items-lg-center">
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <li class="nav-item"><a class="nav-link" href="/orders">My orders</a></li>
+                            <li class="nav-item"><form method="post" action="/account/logout"><button class="btn nav-link" type="submit">Sign out</button></form></li>
+                        }
+                        else
+                        {
+                            <li class="nav-item"><a class="nav-link" href="/account/login">Sign in</a></li>
+                        }
+                        <li class="nav-item"><a class="cart-link" href="/cart">Cart <span class="cart-count" aria-label="0 cart items">0</span></a></li>
                     </ul>
                 </div>
             </div>
         </nav>
     </header>
-    <div class="container">
-        <main role="main" class="pb-3">
-            @RenderBody()
-        </main>
-    </div>
 
-    <footer class="border-top footer text-muted">
+    <main id="main-content" class="site-main" tabindex="-1">
         <div class="container">
-            &copy; 2026 - ECommerceStore.Web - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            @if (TempData["Success"] is string success)
+            {
+                <div class="alert alert-success alert-dismissible fade show mt-3" role="status">@success<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>
+            }
+            @if (TempData["Error"] is string error)
+            {
+                <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">@error<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>
+            }
+            @RenderBody()
         </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-grid">
+            <div><div class="brand-mark text-white"><span class="brand-dot"></span>ECommerceStore</div><p>Useful objects, considered details, honest prices.</p></div>
+            <div><h2>Explore</h2><a asp-controller="Catalog" asp-action="Index">All products</a><a href="/products?Sort=Newest">Latest arrivals</a></div>
+            <div><h2>Support</h2><a href="/Home/Privacy">Privacy</a><span>Development store · USD</span></div>
+        </div>
+        <div class="container footer-bottom">&copy; 2026 ECommerceStore. Built with ASP.NET Core.</div>
     </footer>
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)

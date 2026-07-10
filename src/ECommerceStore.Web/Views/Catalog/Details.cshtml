@@ -1,0 +1,25 @@
+@model ProductDetailsViewModel
+@{ ViewData["Title"] = Model.Name; }
+
+<nav class="breadcrumb-wrap" aria-label="Breadcrumb"><a asp-controller="Home" asp-action="Index">Home</a><span>/</span><a href="/category/@Model.CategorySlug">@Model.CategoryName</a><span>/</span><span aria-current="page">@Model.Name</span></nav>
+<section class="product-detail">
+    <div class="detail-image">
+        @if (!string.IsNullOrWhiteSpace(Model.ImageUrl)) { <img src="@Model.ImageUrl" alt="@Model.Name" /> }
+        else { <span class="image-placeholder large" aria-hidden="true"><span>@Model.Name[..1]</span></span> }
+        @if (Model.HasDiscount) { <span class="product-badge">Sale</span> }
+    </div>
+    <div class="detail-copy">
+        <a class="category-label" href="/category/@Model.CategorySlug">@Model.CategoryName</a>
+        <h1>@Model.Name</h1><p class="detail-intro">@Model.ShortDescription</p>
+        <div class="detail-price"><strong>@Model.EffectivePrice.ToString("C")</strong>@if (Model.HasDiscount) { <del>@Model.NormalPrice.ToString("C")</del><span>Save @((Model.NormalPrice - Model.EffectivePrice).ToString("C"))</span> }</div>
+        <div class="stock-status @(Model.IsInStock ? "available" : "unavailable")"><span></span>@(Model.IsInStock ? $"In stock · {Model.StockQuantity} available" : "Currently out of stock")</div>
+        <p class="detail-description">@Model.FullDescription</p>
+        <form action="/cart/add" method="post" class="add-form"><input type="hidden" name="productId" value="@Model.Id" /><div><label for="quantity" class="form-label">Quantity</label><input id="quantity" name="quantity" class="form-control" type="number" min="1" max="@Math.Max(1, Model.StockQuantity)" value="1" /></div><button class="btn btn-primary btn-lg" type="submit" disabled="@(!Model.IsInStock)">@(Model.IsInStock ? "Add to cart" : "Out of stock")</button></form>
+        <div class="detail-notes"><div><strong>Secure local demo</strong><span>No real payment is collected.</span></div><div><strong>Clear pricing</strong><span>Tax included, shipping shown in cart.</span></div></div>
+    </div>
+</section>
+
+<section class="product-section" aria-labelledby="related-heading"><div class="section-heading"><div><span class="eyebrow">You may also like</span><h2 id="related-heading">Related products</h2></div></div>
+    @if (Model.RelatedProducts.Count == 0) { <partial name="_EmptyState" model='"More products in this category are coming soon."' /> }
+    else { <div class="product-grid">@foreach (var product in Model.RelatedProducts) { <partial name="_ProductCard" model="product" /> }</div> }
+</section>

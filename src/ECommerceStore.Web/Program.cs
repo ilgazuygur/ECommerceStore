@@ -2,12 +2,14 @@ using ECommerceStore.Web.Data;
 using ECommerceStore.Web.Data.Seed;
 using ECommerceStore.Web.Models.Identity;
 using ECommerceStore.Web.Services.Common;
+using ECommerceStore.Web.Services.Catalog;
 using ECommerceStore.Web.Services.Orders;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Infrastructure;
+using System.Globalization;
 using StoreConfiguration = ECommerceStore.Web.Services.Common.StoreOptions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -83,6 +85,7 @@ builder.Services.AddOptions<AIServiceOptions>().BindConfiguration(AIServiceOptio
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddSingleton<IOrderNumberGenerator, OrderNumberGenerator>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<IProductQueryService, ProductQueryService>();
 
 builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
@@ -90,6 +93,14 @@ builder.Services.AddControllersWithViews(options =>
 QuestPDF.Settings.License = LicenseType.Community;
 
 var app = builder.Build();
+
+var storeCulture = CultureInfo.GetCultureInfo("en-US");
+app.UseRequestLocalization(new RequestLocalizationOptions
+{
+    DefaultRequestCulture = new Microsoft.AspNetCore.Localization.RequestCulture(storeCulture),
+    SupportedCultures = [storeCulture],
+    SupportedUICultures = [storeCulture]
+});
 
 if (!app.Environment.IsDevelopment())
 {

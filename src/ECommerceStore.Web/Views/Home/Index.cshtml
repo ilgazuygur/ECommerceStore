@@ -1,8 +1,31 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
-}
+@model HomeViewModel
+@{ ViewData["Title"] = "Thoughtful goods for everyday life"; }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<section class="hero-section">
+    <div class="hero-copy">
+        <span class="eyebrow">The everyday edit</span>
+        <h1>Better essentials,<br />chosen with care.</h1>
+        <p>Discover considered technology, homeware, fitness gear, and accessories selected to work beautifully in real life.</p>
+        <div class="d-flex flex-wrap gap-3"><a class="btn btn-primary btn-lg" asp-controller="Catalog" asp-action="Index">Shop the collection</a><a class="btn btn-outline-dark btn-lg" href="#featured">See featured</a></div>
+    </div>
+    <div class="hero-art" aria-hidden="true"><div class="hero-orb orb-one"></div><div class="hero-orb orb-two"></div><div class="hero-product"><span>12</span><small>curated arrivals</small></div></div>
+</section>
+
+<section class="category-strip" aria-labelledby="category-heading">
+    <div><span class="eyebrow">Browse by category</span><h2 id="category-heading">Find your next favorite</h2></div>
+    <div class="category-links">@foreach (var category in Model.Categories) { <a href="/category/@category.Slug">@category.Name <span aria-hidden="true">↗</span></a> }</div>
+</section>
+
+<section id="featured" class="product-section" aria-labelledby="featured-heading">
+    <div class="section-heading"><div><span class="eyebrow">Editor’s selection</span><h2 id="featured-heading">Featured products</h2></div><a asp-controller="Catalog" asp-action="Index">View all <span aria-hidden="true">→</span></a></div>
+    @if (Model.FeaturedProducts.Count == 0) { <partial name="_EmptyState" model='"Featured products are coming soon."' /> }
+    else { <div class="product-grid">@foreach (var product in Model.FeaturedProducts) { <partial name="_ProductCard" model="product" /> }</div> }
+</section>
+
+<section class="product-section" aria-labelledby="latest-heading">
+    <div class="section-heading"><div><span class="eyebrow">Just landed</span><h2 id="latest-heading">Latest products</h2></div><a href="/products?Sort=Newest">Browse newest <span aria-hidden="true">→</span></a></div>
+    @if (Model.LatestProducts.Count == 0) { <partial name="_EmptyState" model='"The collection is being prepared."' /> }
+    else { <div class="product-grid">@foreach (var product in Model.LatestProducts) { <partial name="_ProductCard" model="product" /> }</div> }
+</section>
+
+<section class="value-band"><div><strong>Free from clutter</strong><span>A focused collection of useful goods.</span></div><div><strong>Clear pricing</strong><span>Tax-inclusive USD prices, always.</span></div><div><strong>Local-first</strong><span>A private development store with fake checkout.</span></div></section>

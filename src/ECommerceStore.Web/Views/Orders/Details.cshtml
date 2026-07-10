@@ -67,6 +67,7 @@
             <div><dt>Shipping</dt><dd>@Model.Shipping.ToString("C")</dd></div>
             <div class="summary-total"><dt>Grand total</dt><dd>@Model.GrandTotal.ToString("C")</dd></div>
         </dl>
+        <a class="button button-secondary button-block" asp-controller="Invoices" asp-action="Download" asp-route-orderNumber="@Model.OrderNumber">Download invoice (PDF)</a>
         <p class="fine-print">Invoice @Model.InvoiceNumber.</p>
     </aside>
 </div>

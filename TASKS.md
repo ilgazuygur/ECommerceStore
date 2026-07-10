@@ -142,7 +142,7 @@
 - [x] Generate a cryptographically random checkout token and bind lookup to the current user; retain anti-forgery as a separate control.
 - [x] **T-PAY-001** Implement deterministic fake success/decline/invalid-expiry/CVV behavior with no network call.
 - [x] **T-PAY-002** Keep PAN/CVV/expiry request-scoped; persist/log only allow-listed result metadata and clear secret model state before redisplay.
-- [ ] **T-ORDER-001** Implement successful order/items/snapshots/numbers/status/payment/stock/cart-clear/confirmation orchestration. _(Order/items/snapshots/numbers/status/stock/cart-clear/confirmation done; invoice-generation and order-email attempts land in Phase 9.)_
+- [x] **T-ORDER-001** Implement successful order/items/snapshots/numbers/status/payment/stock/cart-clear/confirmation orchestration. _(Post-commit invoice-generation and order-email attempts wired in Phase 9.)_
 - [x] **T-ORDER-002** Implement one transaction containing attempt claim, trusted recalculation, conditional stock claims, order aggregate, sanitized payment result, cart clear, and attempt completion.
 - [x] Handle fake decline by committing only sanitized failure state while preserving stock/cart.
 - [ ] Handle duplicate succeeded/failed/processing tokens and bounded stale fake-attempt recovery without creating a second order. _(Duplicate succeeded/failed/processing tokens handled idempotently; bounded stale-processing recovery still pending.)_
@@ -161,8 +161,8 @@
 
 ## Phase 8 — Customer orders and ownership
 
-- [x] **T-ORDER-003** Implement owner-only paginated My Orders and details with every specified list/detail field sourced from snapshots. _(List/detail fields and pagination done; the invoice download action is added in Phase 9.)_
-- [x] **T-ORDER-004** Implement service/query methods that require both resource identifier and current user ID for confirmation, details, and invoice models. _(Confirmation and details enforce owner scoping; invoice model added in Phase 9.)_
+- [x] **T-ORDER-003** Implement owner-only paginated My Orders and details with every specified list/detail field sourced from snapshots. _(Invoice download action added in Phase 9.)_
+- [x] **T-ORDER-004** Implement service/query methods that require both resource identifier and current user ID for confirmation, details, and invoice models.
 - [x] Return consistent 404 for missing/non-owned customer order resources; do not reveal existence.
 - [x] Ensure later profile/product/category/price/deletion changes do not alter displayed history.
 - [x] Add customer A/customer B/anonymous tests against route IDs and public order numbers.
@@ -175,21 +175,21 @@
 
 ## Phase 9 — PDF and order email
 
-- [ ] **T-PDF-001** Implement QuestPDF invoice layout containing all required store/customer/address/order/item/financial/payment fields.
-- [ ] Expose one owner-scoped PDF endpoint linked from confirmation, list, and details, with sanitized filename/content type.
-- [ ] **T-PDF-002** Regenerate from immutable snapshots in memory, attempt after commit, retry on download, and handle generator failure without invalidating the order.
-- [ ] **T-EMAIL-002** Implement reusable email abstraction/composer/transports and post-commit order email with required summary/view/invoice information.
-- [ ] Ensure duplicate confirmation/token retrieval does not unintentionally resend email repeatedly.
-- [ ] Add valid PDF signature/nonempty/content tests and visual PDF fixture review.
-- [ ] Add owner/non-owner invoice tests before generator invocation.
-- [ ] Add email fallback/SMTP failure tests proving successful order remains committed.
-- [ ] Manually open the invoice in a PDF viewer and inspect fallback order email.
+- [x] **T-PDF-001** Implement QuestPDF invoice layout containing all required store/customer/address/order/item/financial/payment fields.
+- [x] Expose one owner-scoped PDF endpoint linked from confirmation, list, and details, with sanitized filename/content type.
+- [x] **T-PDF-002** Regenerate from immutable snapshots in memory, attempt after commit, retry on download, and handle generator failure without invalidating the order.
+- [x] **T-EMAIL-002** Implement reusable email abstraction/composer/transports and post-commit order email with required summary/view/invoice information.
+- [x] Ensure duplicate confirmation/token retrieval does not unintentionally resend email repeatedly.
+- [x] Add valid PDF signature/nonempty/content tests and visual PDF fixture review.
+- [x] Add owner/non-owner invoice tests before generator invocation.
+- [x] Add email fallback/SMTP failure tests proving successful order remains committed.
+- [x] Manually open the invoice in a PDF viewer and inspect fallback order email.
 
 ### Phase 9 Definition of Done
 
-- [ ] All successful orders have stable invoice numbers and authorized retryable PDFs.
-- [ ] PDF/email failures are visible in safe logs/UX but never roll back orders.
-- [ ] No invoice is stored under a public guessable path.
+- [x] All successful orders have stable invoice numbers and authorized retryable PDFs.
+- [x] PDF/email failures are visible in safe logs/UX but never roll back orders.
+- [x] No invoice is stored under a public guessable path.
 
 ## Phase 10 — Administrator area
 

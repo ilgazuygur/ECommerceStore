@@ -51,6 +51,7 @@
             <div><dt>Shipping</dt><dd>@Model.Shipping.ToString("C")</dd></div>
             <div class="summary-total"><dt>Grand total</dt><dd>@Model.GrandTotal.ToString("C")</dd></div>
         </dl>
-        <p class="fine-print">Invoice @Model.InvoiceNumber will be available to download from your order details.</p>
+        <a class="button button-secondary button-block" asp-controller="Invoices" asp-action="Download" asp-route-orderNumber="@Model.OrderNumber">Download invoice (PDF)</a>
+        <p class="fine-print">Invoice @Model.InvoiceNumber. A confirmation email was sent to @Model.CustomerEmail.</p>
     </aside>
 </div>

@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using System.Security.Cryptography;
 using ECommerceStore.Web.Services.Checkout;
+using ECommerceStore.Web.Services.Orders;
 using ECommerceStore.Web.Services.Payments;
 using ECommerceStore.Web.ViewModels.Checkout;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +10,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace ECommerceStore.Web.Controllers;
 
 [Authorize, Route("checkout")]
-public sealed class CheckoutController(ICheckoutService checkoutService) : Controller
+public sealed class CheckoutController(
+    ICheckoutService checkoutService,
+    IOrderConfirmationDispatcher confirmationDispatcher) : Controller
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -53,6 +57,9 @@ public sealed class CheckoutController(ICheckoutService checkoutService) : Contr
         switch (result.Outcome)
         {
             case CheckoutOutcome.Success:
+                // Post-commit side effects only. Invoice generation and order email are best-effort and
+                // can never invalidate the committed order.
+                await confirmationDispatcher.DispatchAsync(User.FindFirstValue(ClaimTypes.NameIdentifier)!, result.OrderNumber!, cancellationToken);
                 TempData["Success"] = "Payment approved. Your order is confirmed.";
                 return RedirectToAction("Confirmation", "Orders", new { orderNumber = result.OrderNumber });
             case CheckoutOutcome.AlreadyPlaced:

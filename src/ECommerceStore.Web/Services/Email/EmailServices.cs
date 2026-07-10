@@ -1,6 +1,9 @@
+using System.Globalization;
 using System.Net;
+using System.Text;
 using System.Text.Encodings.Web;
 using ECommerceStore.Web.Services.Common;
+using ECommerceStore.Web.Services.Invoices;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Options;
@@ -15,10 +18,13 @@ public sealed record EmailDeliveryResult(bool Succeeded, string Channel, string 
 public interface IEmailComposer
 {
     EmailMessage ComposeWelcome(string email, WelcomeEmailModel model);
+    EmailMessage ComposeOrderConfirmation(InvoiceModel invoice);
 }
 
 public sealed class EmailComposer(HtmlEncoder encoder) : IEmailComposer
 {
+    private static readonly CultureInfo Culture = CultureInfo.GetCultureInfo("en-US");
+
     public EmailMessage ComposeWelcome(string email, WelcomeEmailModel model)
     {
         var safeName = encoder.Encode(model.FirstName);
@@ -30,6 +36,43 @@ public sealed class EmailComposer(HtmlEncoder encoder) : IEmailComposer
             $"Hello {model.FirstName},\n\nWelcome to {model.StoreName}. Your account is ready.",
             $"<h1>Welcome to {safeStore}</h1><p>Hello {safeName},</p><p>Your account is ready.</p>");
     }
+
+    public EmailMessage ComposeOrderConfirmation(InvoiceModel invoice)
+    {
+        var text = new StringBuilder();
+        text.Append($"Hello {invoice.CustomerName},\n\n");
+        text.Append($"Thank you for your order {invoice.OrderNumber} placed on {invoice.CreatedAtUtc:dd MMM yyyy HH:mm} UTC.\n\n");
+        foreach (var line in invoice.Lines)
+        {
+            text.Append($"- {line.Quantity} x {line.ProductName} — {Money(line.LineTotal)}\n");
+        }
+
+        text.Append($"\nSubtotal: {Money(invoice.Subtotal)}\nDiscount: -{Money(invoice.Discount)}\nShipping: {Money(invoice.Shipping)}\nGrand total: {Money(invoice.GrandTotal)}\n\n");
+        text.Append($"Invoice {invoice.InvoiceNumber}. View this order and download your invoice from My Orders in your account.\n");
+
+        var html = new StringBuilder();
+        html.Append($"<h1>Order confirmed</h1><p>Hello {Encode(invoice.CustomerName)},</p>");
+        html.Append($"<p>Thank you for your order <strong>{Encode(invoice.OrderNumber)}</strong> placed on {Encode(invoice.CreatedAtUtc.ToString("dd MMM yyyy HH:mm", Culture))} UTC.</p>");
+        html.Append("<table cellpadding=\"6\" style=\"border-collapse:collapse\"><thead><tr><th align=\"left\">Item</th><th align=\"right\">Qty</th><th align=\"right\">Total</th></tr></thead><tbody>");
+        foreach (var line in invoice.Lines)
+        {
+            html.Append($"<tr><td>{Encode(line.ProductName)}</td><td align=\"right\">{line.Quantity}</td><td align=\"right\">{Encode(Money(line.LineTotal))}</td></tr>");
+        }
+
+        html.Append("</tbody></table>");
+        html.Append($"<p>Subtotal: {Encode(Money(invoice.Subtotal))}<br/>Discount: -{Encode(Money(invoice.Discount))}<br/>Shipping: {Encode(Money(invoice.Shipping))}<br/><strong>Grand total: {Encode(Money(invoice.GrandTotal))}</strong></p>");
+        html.Append($"<p>Invoice {Encode(invoice.InvoiceNumber)}. View this order and download your invoice from My Orders in your account.</p>");
+
+        return new EmailMessage(
+            invoice.CustomerEmail,
+            invoice.CustomerName,
+            $"Your {invoice.StoreName} order {invoice.OrderNumber}",
+            text.ToString(),
+            html.ToString());
+    }
+
+    private string Encode(string value) => encoder.Encode(value);
+    private static string Money(decimal value) => value.ToString("C", Culture);
 }
 
 public interface IEmailTransport

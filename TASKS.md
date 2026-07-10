@@ -28,17 +28,17 @@
 - [ ] **T-TECH-003** Establish a Docker-free root workflow for restore, local EF migration, run, and test.
 - [ ] **T-ARCH-001** Create the single layered web project and test project/folders defined in `ARCHITECTURE.md`, with dependency direction reviewed.
 - [ ] **T-APP-001** Add one final integrated-application acceptance checkpoint proving the completed system is locally runnable and not a static/partial demo.
-- [ ] Add nullable analysis, async controller/service conventions, option binding, and environment-specific middleware.
-- [ ] Create `.gitignore` only now (after approval) for secrets, build/database/email/log/IDE/OS artifacts and the approved upload policy.
-- [ ] Add configuration placeholders with no credential/API/password values.
-- [ ] Add custom error route/view placeholders and a basic shared layout; defer visual completion.
-- [ ] Run `dotnet restore`, Debug/Release builds, and initial xUnit smoke test from repository root.
+- [x] Add nullable analysis, async controller/service conventions, option binding, and environment-specific middleware.
+- [x] Create `.gitignore` only now (after approval) for secrets, build/database/email/log/IDE/OS artifacts and the approved upload policy.
+- [x] Add configuration placeholders with no credential/API/password values.
+- [x] Add custom error route/view placeholders and a basic shared layout; defer visual completion.
+- [x] Run `dotnet restore`, Debug/Release builds, and initial xUnit smoke test from repository root.
 
 ### Phase 1 Definition of Done
 
-- [ ] Fresh root restore/build/test succeeds on the development Mac.
-- [ ] App starts without Docker or an external database server.
-- [ ] No secret/runtime artifact is tracked; package/tool versions are reproducible.
+- [x] Fresh root restore/build/test succeeds on the development Mac.
+- [x] App starts without Docker or an external database server.
+- [x] No secret/runtime artifact is tracked; package/tool versions are reproducible.
 
 ## Phase 2 — Database, Identity, migrations, and seed
 

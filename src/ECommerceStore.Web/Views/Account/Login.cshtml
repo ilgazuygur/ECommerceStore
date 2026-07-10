@@ -1,0 +1,6 @@
+@model ECommerceStore.Web.ViewModels.Account.LoginViewModel
+@{ ViewData["Title"] = "Sign in"; }
+<section class="account-shell"><div class="account-intro"><span class="eyebrow">Welcome back</span><h1>Sign in.</h1><p>Your saved cart and order history are waiting.</p></div><div class="account-panel">
+<form asp-action="Login" method="post"><input asp-for="ReturnUrl" type="hidden" /><div asp-validation-summary="ModelOnly" class="validation-summary"></div><div><label asp-for="Email"></label><input asp-for="Email" class="form-control" autocomplete="email" /><span asp-validation-for="Email"></span></div><div><label asp-for="Password"></label><input asp-for="Password" class="form-control" autocomplete="current-password" /><span asp-validation-for="Password"></span></div><label class="check-row"><input asp-for="RememberMe" /> Keep me signed in</label><button class="button button-primary button-block" type="submit">Sign in</button></form><p>New here? <a class="text-link" asp-action="Register" asp-route-returnUrl="@Model.ReturnUrl">Create an account</a></p>
+</div></section>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

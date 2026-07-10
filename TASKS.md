@@ -99,42 +99,42 @@
 
 ## Phase 5 — Shopping carts and merge
 
-- [ ] **T-CART-001** Implement POST-only add/remove/increment/decrement/update/clear, total-unit count, and server-calculated subtotal/shipping/discount/grand total.
-- [ ] Implement a pure cart calculator with list/effective line rounding identical to persisted order math.
-- [ ] **T-CART-002** Implement versioned session JSON containing only bounded product IDs/quantities, with safe corrupt/expired repair.
-- [ ] **T-CART-003** Implement one persisted cart per authenticated user and transactional anonymous-to-user merge after login/registration.
-- [ ] Merge duplicate lines by sum then stock/per-line cap; report dropped inactive/missing/out-of-stock items.
-- [ ] Clear anonymous session data only after database merge commit and prevent routine duplicate merge consumption.
-- [ ] **T-CART-004** Enforce product ID, active state, stock, positive quantity, per-line cap, and trusted price/discount validation on every mutation and checkout read.
-- [ ] Implement lightweight navigation cart-count view component for both cart stores.
-- [ ] Add anti-forgery to every mutation and ensure request models contain no price/total/user fields.
+- [x] **T-CART-001** Implement POST-only add/remove/increment/decrement/update/clear, total-unit count, and server-calculated subtotal/shipping/discount/grand total.
+- [x] Implement a pure cart calculator with list/effective line rounding identical to persisted order math.
+- [x] **T-CART-002** Implement versioned session JSON containing only bounded product IDs/quantities, with safe corrupt/expired repair.
+- [x] **T-CART-003** Implement one persisted cart per authenticated user and transactional anonymous-to-user merge after login/registration.
+- [x] Merge duplicate lines by sum then stock/per-line cap; report dropped inactive/missing/out-of-stock items.
+- [x] Clear anonymous session data only after database merge commit and prevent routine duplicate merge consumption.
+- [x] **T-CART-004** Enforce product ID, active state, stock, positive quantity, per-line cap, and trusted price/discount validation on every mutation and checkout read.
+- [x] Implement lightweight navigation cart-count view component for both cart stores.
+- [x] Add anti-forgery to every mutation and ensure request models contain no price/total/user fields.
 - [ ] Add unit/integration/web tests for calculations, all mutations/invalid input, corrupt session, merge/rollback/idempotence, and concurrency.
 - [ ] Complete anonymous add → authentication → merge → update → clear manual workflow.
 
 ### Phase 5 Definition of Done
 
-- [ ] Anonymous cart survives navigation and successful auth merge without trusting session prices.
-- [ ] Existing and anonymous lines merge without exceeding stock or double-consuming session data.
-- [ ] All cart totals match `DATA-003`, and invalid operations leave consistent state.
+- [x] Anonymous cart survives navigation and successful auth merge without trusting session prices.
+- [x] Existing and anonymous lines merge without exceeding stock or double-consuming session data.
+- [x] All cart totals match `DATA-003`, and invalid operations leave consistent state.
 
 ## Phase 6 — Accounts and welcome email
 
-- [ ] **T-AUTH-001** Implement registration input/view with first/last/email/password/confirmation/optional phone, dedicated validation, friendly Identity errors, and duplicate-email handling.
-- [ ] **T-AUTH-002** Implement non-enumerating login, local-return handling, logout POST, Identity password hashing, and authentication-session behavior.
-- [ ] **T-AUTH-003** Seed/assign Customer and Administrator roles, configure challenge/access denied, and enforce all restricted actions server-side.
-- [ ] **T-AUTH-004** Enforce `IsEnabled` during sign-in/cookie validation and prepare safe disable/re-enable service behavior without Identity-internal projection.
-- [ ] Integrate cart merge only after successful login/registration and retain safe merge feedback.
-- [ ] **T-EMAIL-001** Implement welcome email composition and resilient SMTP-or-Development-file delivery after registration success.
-- [ ] Implement `SmtpOptions` validation, TLS, environment/user-secret credential lookup, atomic safe fallback filenames, and sanitized delivery logs.
+- [x] **T-AUTH-001** Implement registration input/view with first/last/email/password/confirmation/optional phone, dedicated validation, friendly Identity errors, and duplicate-email handling.
+- [x] **T-AUTH-002** Implement non-enumerating login, local-return handling, logout POST, Identity password hashing, and authentication-session behavior.
+- [x] **T-AUTH-003** Seed/assign Customer and Administrator roles, configure challenge/access denied, and enforce all restricted actions server-side.
+- [x] **T-AUTH-004** Enforce `IsEnabled` during sign-in/cookie validation and prepare safe disable/re-enable service behavior without Identity-internal projection.
+- [x] Integrate cart merge only after successful login/registration and retain safe merge feedback.
+- [x] **T-EMAIL-001** Implement welcome email composition and resilient SMTP-or-Development-file delivery after registration success.
+- [x] Implement `SmtpOptions` validation, TLS, environment/user-secret credential lookup, atomic safe fallback filenames, and sanitized delivery logs.
 - [ ] Verify a role-assignment failure rolls back the registration transaction and leaves no incorrectly successful user.
 - [ ] Add account, safe redirect, disabled session, email file/failure/encoding, and registration-survival tests.
-- [ ] Manually register with SMTP absent and inspect the generated local email.
+- [x] Manually register with SMTP absent and inspect the generated local email.
 
 ### Phase 6 Definition of Done
 
 - [ ] Registration/login/logout and enabled-state behavior pass without exposing credentials/Identity internals.
-- [ ] Welcome email success/failure cannot change account success.
-- [ ] Development fallback is safe and Production never silently writes local PII mail.
+- [x] Welcome email success/failure cannot change account success.
+- [x] Development fallback is safe and Production never silently writes local PII mail.
 
 ## Phase 7 — Checkout, fake payment, transaction, and stock
 

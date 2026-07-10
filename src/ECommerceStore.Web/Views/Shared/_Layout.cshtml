@@ -38,8 +38,9 @@
                         else
                         {
                             <li class="nav-item"><a class="nav-link" href="/account/login">Sign in</a></li>
+                            <li class="nav-item"><a class="nav-link" href="/account/register">Register</a></li>
                         }
-                        <li class="nav-item"><a class="cart-link" href="/cart">Cart <span class="cart-count" aria-label="0 cart items">0</span></a></li>
+                        <li class="nav-item"><a class="cart-link" href="/cart">Cart @await Component.InvokeAsync("CartCount")</a></li>
                     </ul>
                 </div>
             </div>
@@ -55,6 +56,10 @@
             @if (TempData["Error"] is string error)
             {
                 <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">@error<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>
+            }
+            @if (TempData["Warning"] is string warning)
+            {
+                <div class="alert alert-warning alert-dismissible fade show mt-3" role="status">@warning<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>
             }
             @RenderBody()
         </div>

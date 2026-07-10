@@ -1,0 +1,45 @@
+@model CartViewModel
+@{
+    ViewData["Title"] = "Your cart";
+}
+
+<section class="page-heading">
+    <div><span class="eyebrow">Your selection</span><h1>Your cart</h1><p>@Model.TotalUnits item@(Model.TotalUnits == 1 ? "" : "s") ready for checkout.</p></div>
+    <a class="text-link" asp-controller="Catalog" asp-action="Index">Continue shopping →</a>
+</section>
+
+@if (Model.IsEmpty)
+{
+    <partial name="_EmptyState" model='"Browse the collection and add something useful."' />
+}
+else
+{
+    <div class="cart-layout">
+        <section class="cart-lines" aria-label="Cart items">
+            @foreach (var line in Model.Lines)
+            {
+                <article class="cart-line">
+                    <a class="cart-line-image" asp-controller="Catalog" asp-action="Details" asp-route-slug="@line.Slug" aria-label="View @line.Name">
+                        @if (line.ImageUrl is null) { <span class="image-placeholder"><span>@line.Name[..1]</span></span> } else { <img src="@line.ImageUrl" alt="" /> }
+                    </a>
+                    <div class="cart-line-copy"><span class="eyebrow">@line.CategoryName</span><h2><a asp-controller="Catalog" asp-action="Details" asp-route-slug="@line.Slug">@line.Name</a></h2><span>@line.PaidUnitPrice.ToString("C") each</span></div>
+                    <div class="cart-quantity-controls"><form asp-action="Decrement" method="post"><input type="hidden" name="productId" value="@line.ProductId" /><button class="quantity-step" type="submit" aria-label="Decrease @line.Name quantity">−</button></form><form asp-action="Update" method="post" class="cart-quantity">
+                        <input type="hidden" name="ProductId" value="@line.ProductId" />
+                        <label for="quantity-@line.ProductId">Quantity</label>
+                        <input id="quantity-@line.ProductId" name="Quantity" type="number" value="@line.Quantity" min="1" max="@line.MaximumQuantity" />
+                        <button class="button button-secondary button-small" type="submit">Update</button>
+                    </form><form asp-action="Increment" method="post"><input type="hidden" name="productId" value="@line.ProductId" /><button class="quantity-step" type="submit" aria-label="Increase @line.Name quantity">+</button></form></div>
+                    <div class="cart-line-total"><strong>@line.LineTotal.ToString("C")</strong>@if (line.LineDiscount > 0) { <span>You save @line.LineDiscount.ToString("C")</span> }</div>
+                    <form asp-action="Remove" method="post"><input type="hidden" name="productId" value="@line.ProductId" /><button class="text-button" type="submit">Remove</button></form>
+                </article>
+            }
+            <form asp-action="Clear" method="post"><button class="text-button" type="submit">Clear cart</button></form>
+        </section>
+        <aside class="order-summary">
+            <span class="eyebrow">Summary</span><h2>Order total</h2>
+            <dl><div><dt>List subtotal</dt><dd>@Model.Totals.ListPriceSubtotal.ToString("C")</dd></div><div><dt>Discount</dt><dd>−@Model.Totals.DiscountTotal.ToString("C")</dd></div><div><dt>Merchandise</dt><dd>@Model.Totals.MerchandiseTotal.ToString("C")</dd></div><div><dt>Shipping</dt><dd>@Model.Totals.Shipping.ToString("C")</dd></div><div class="summary-total"><dt>Total</dt><dd>@Model.Totals.GrandTotal.ToString("C")</dd></div></dl>
+            @if (Model.IsAuthenticated) { <a class="button button-primary button-block" href="/checkout">Continue to checkout</a> } else { <a class="button button-primary button-block" asp-controller="Account" asp-action="Login" asp-route-returnUrl="/checkout">Sign in to checkout</a> }
+            <p class="fine-print">Prices are tax-inclusive. Checkout uses a fake card only.</p>
+        </aside>
+    </div>
+}

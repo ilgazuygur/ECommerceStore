@@ -3,6 +3,8 @@ using ECommerceStore.Web.Data.Seed;
 using ECommerceStore.Web.Models.Identity;
 using ECommerceStore.Web.Services.Common;
 using ECommerceStore.Web.Services.Catalog;
+using ECommerceStore.Web.Services.Cart;
+using ECommerceStore.Web.Services.Email;
 using ECommerceStore.Web.Services.Orders;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -66,6 +68,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 builder.Services.AddDistributedMemoryCache();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddSession(options =>
 {
     options.Cookie.Name = "ECommerceStore.Session";
@@ -86,6 +89,14 @@ builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddSingleton<IOrderNumberGenerator, OrderNumberGenerator>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IProductQueryService, ProductQueryService>();
+builder.Services.AddScoped<ICartCalculator, CartCalculator>();
+builder.Services.AddScoped<IAnonymousCartStore, AnonymousCartStore>();
+builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddScoped<ICartMergeService, CartMergeService>();
+builder.Services.AddSingleton<IEmailComposer, EmailComposer>();
+builder.Services.AddScoped<SmtpEmailTransport>();
+builder.Services.AddScoped<DevelopmentFileEmailTransport>();
+builder.Services.AddScoped<IEmailService, ResilientEmailService>();
 
 builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));

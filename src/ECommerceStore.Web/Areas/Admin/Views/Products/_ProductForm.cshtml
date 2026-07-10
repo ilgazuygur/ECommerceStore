@@ -1,0 +1,75 @@
+@model AdminProductInput
+@{
+    var categories = ViewBag.Categories as IReadOnlyList<CategoryOption> ?? new List<CategoryOption>();
+    var aiEnabled = ViewBag.AiEnabled is true;
+}
+
+<form method="post" class="admin-form">
+    <input asp-for="Id" type="hidden" />
+    <input asp-for="Version" type="hidden" />
+    <div asp-validation-summary="All" class="validation-summary"></div>
+
+    <div><label asp-for="Name">Name</label><input asp-for="Name" class="form-control" /><span asp-validation-for="Name"></span></div>
+
+    <div><label asp-for="CategoryId">Category</label>
+        <select asp-for="CategoryId" class="form-select">
+            <option value="">Choose a category</option>
+            @foreach (var category in categories)
+            {
+                <option value="@category.Id" selected="@(Model.CategoryId == category.Id)">@category.Name @(category.IsActive ? "" : "(inactive)")</option>
+            }
+        </select>
+        <span asp-validation-for="CategoryId"></span>
+    </div>
+
+    <div><label asp-for="ShortDescription">Short description</label><input asp-for="ShortDescription" class="form-control" /><span asp-validation-for="ShortDescription"></span></div>
+
+    <div>
+        <label asp-for="FullDescription">Full description</label>
+        <textarea asp-for="FullDescription" class="form-control" rows="5"></textarea>
+        <span asp-validation-for="FullDescription"></span>
+        @if (aiEnabled)
+        {
+            <button type="button" class="button button-secondary button-small mt-2" id="ai-draft-btn">Draft with AI (editable)</button>
+            <small class="row-sub">AI text is a draft — review and edit before saving. Nothing is saved automatically.</small>
+        }
+    </div>
+
+    <div class="form-row-3">
+        <div><label asp-for="NormalPrice">Normal price</label><input asp-for="NormalPrice" class="form-control" type="number" step="0.01" min="0.01" /><span asp-validation-for="NormalPrice"></span></div>
+        <div><label asp-for="DiscountPrice">Discount price <small>(optional)</small></label><input asp-for="DiscountPrice" class="form-control" type="number" step="0.01" min="0" /><span asp-validation-for="DiscountPrice"></span></div>
+        <div><label asp-for="StockQuantity">Stock</label><input asp-for="StockQuantity" class="form-control" type="number" min="0" /><span asp-validation-for="StockQuantity"></span></div>
+    </div>
+
+    <div><label asp-for="ImageUrl">Image URL <small>(https, optional)</small></label><input asp-for="ImageUrl" class="form-control" /><span asp-validation-for="ImageUrl"></span></div>
+
+    <div class="admin-checks">
+        <label class="check-row"><input asp-for="IsActive" /> Active</label>
+        <label class="check-row"><input asp-for="IsFeatured" /> Featured</label>
+    </div>
+
+    <div class="admin-form-actions">
+        <button class="button button-primary" type="submit">Save product</button>
+        <a class="button button-secondary" asp-action="Index">Cancel</a>
+    </div>
+</form>
+
+@if (aiEnabled)
+{
+    <script>
+        document.getElementById('ai-draft-btn')?.addEventListener('click', async function () {
+            var name = document.getElementById('Name')?.value || '';
+            var categorySelect = document.getElementById('CategoryId');
+            var category = categorySelect ? (categorySelect.options[categorySelect.selectedIndex]?.text || '') : '';
+            var token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            var body = new URLSearchParams({ name: name, category: category, __RequestVerificationToken: token });
+            try {
+                var response = await fetch('@Url.Action("DraftDescription", "Products", new { area = "Admin" })', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body });
+                var data = await response.json();
+                if (data.available && data.draft) {
+                    document.getElementById('FullDescription').value = data.draft;
+                }
+            } catch (error) { /* draft is optional; manual entry always works */ }
+        });
+    </script>
+}

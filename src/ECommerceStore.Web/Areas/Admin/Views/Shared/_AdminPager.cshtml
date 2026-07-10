@@ -1,0 +1,21 @@
+@model PagedViewModel
+@{
+    string PageUrl(int page)
+    {
+        var parts = Context.Request.Query
+            .Where(entry => entry.Key != "page")
+            .Select(entry => $"{Uri.EscapeDataString(entry.Key)}={Uri.EscapeDataString(entry.Value.ToString())}")
+            .Append($"page={page}");
+        return $"{Context.Request.Path}?{string.Join("&", parts)}";
+    }
+}
+@if (Model.TotalPages > 1)
+{
+    <nav class="pagination-wrap" aria-label="Pages">
+        <ul class="pagination">
+            <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")"><a class="page-link" href="@PageUrl(Model.Page - 1)" tabindex="@(Model.HasPreviousPage ? "0" : "-1")">Previous</a></li>
+            <li class="page-item disabled"><span class="page-link">Page @Model.Page of @Model.TotalPages</span></li>
+            <li class="page-item @(Model.HasNextPage ? "" : "disabled")"><a class="page-link" href="@PageUrl(Model.Page + 1)" tabindex="@(Model.HasNextPage ? "0" : "-1")">Next</a></li>
+        </ul>
+    </nav>
+}

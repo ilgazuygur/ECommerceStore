@@ -18,6 +18,7 @@ public sealed class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Ap
         var configuration = new ConfigurationBuilder()
             .SetBasePath(basePath)
             .AddJsonFile("appsettings.json")
+            .AddEnvironmentVariables()
             .Build();
 
         var connection = new SqliteConnectionStringBuilder(

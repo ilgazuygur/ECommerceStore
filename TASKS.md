@@ -193,24 +193,24 @@
 
 ## Phase 10 — Administrator area
 
-- [ ] **T-ADMIN-001** Create `Areas/Admin` with separate layout/navigation and area-wide plus explicit Administrator role enforcement.
-- [ ] **T-ADMIN-002** Implement dashboard counts/revenue/low-stock queries using documented definitions and configured threshold.
-- [ ] **T-ADMIN-003** Implement paginated product search/filter/create/edit/stock/price/discount/featured/activate/deactivate/category/image-URL operations with concurrency tokens.
-- [ ] Implement product hard-delete eligibility check; otherwise deactivate with explanation while preserving snapshots.
-- [ ] **T-ADMIN-004** Implement paginated category create/edit/activate/deactivate and restrict referenced deletion with unique name/slug handling.
-- [ ] **T-ADMIN-005** Implement paginated admin order search by number/email, status filter/details, and concurrency-checked transition table.
-- [ ] **T-ADMIN-006** Implement paginated safe customer search/profile/orders and disable/re-enable without Identity internals.
-- [ ] Prevent current admin self-disable and last-enabled-administrator disable.
-- [ ] Make all destructive/state changes confirmation + anti-forgery POST, never GET.
-- [ ] Add anonymous/customer/admin authorization matrix for every admin controller/action.
-- [ ] Add dashboard, CRUD uniqueness/deletion, transition, concurrent edit, disable-session, and projection tests.
-- [ ] Complete manual admin workflow for products/categories/customers/orders and customer route blocking.
+- [x] **T-ADMIN-001** Create `Areas/Admin` with separate layout/navigation and area-wide plus explicit Administrator role enforcement.
+- [x] **T-ADMIN-002** Implement dashboard counts/revenue/low-stock queries using documented definitions and configured threshold.
+- [x] **T-ADMIN-003** Implement paginated product search/filter/create/edit/stock/price/discount/featured/activate/deactivate/category/image-URL operations with concurrency tokens.
+- [x] Implement product hard-delete eligibility check; otherwise deactivate with explanation while preserving snapshots.
+- [x] **T-ADMIN-004** Implement paginated category create/edit/activate/deactivate and restrict referenced deletion with unique name/slug handling.
+- [x] **T-ADMIN-005** Implement paginated admin order search by number/email, status filter/details, and concurrency-checked transition table.
+- [x] **T-ADMIN-006** Implement paginated safe customer search/profile/orders and disable/re-enable without Identity internals.
+- [x] Prevent current admin self-disable and last-enabled-administrator disable.
+- [x] Make all destructive/state changes confirmation + anti-forgery POST, never GET.
+- [x] Add anonymous/customer/admin authorization matrix for every admin controller/action.
+- [x] Add dashboard, CRUD uniqueness/deletion, transition, concurrent edit, disable-session, and projection tests.
+- [x] Complete manual admin workflow for products/categories/customers/orders and customer route blocking.
 
 ### Phase 10 Definition of Done
 
-- [ ] Normal customers cannot execute any admin route/action.
-- [ ] All required dashboard/manage/search/filter/status/account operations work and paginate.
-- [ ] Historical orders and Identity secrets remain protected.
+- [x] Normal customers cannot execute any admin route/action.
+- [x] All required dashboard/manage/search/filter/status/account operations work and paginate.
+- [x] Historical orders and Identity secrets remain protected.
 
 ## Phase 11 — Product image uploads
 

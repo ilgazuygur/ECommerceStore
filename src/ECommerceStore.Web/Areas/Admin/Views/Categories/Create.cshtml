@@ -1,0 +1,14 @@
+@model AdminCategoryInput
+@{
+    ViewData["Title"] = "New category";
+}
+<h1 class="admin-h1">New category</h1>
+<form method="post" class="admin-form">
+    <div asp-validation-summary="All" class="validation-summary"></div>
+    <div><label asp-for="Name">Name</label><input asp-for="Name" class="form-control" /><span asp-validation-for="Name"></span></div>
+    <label class="check-row"><input asp-for="IsActive" /> Active</label>
+    <div class="admin-form-actions">
+        <button class="button button-primary" type="submit">Save category</button>
+        <a class="button button-secondary" asp-action="Index">Cancel</a>
+    </div>
+</form>

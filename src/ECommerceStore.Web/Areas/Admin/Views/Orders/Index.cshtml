@@ -1,0 +1,47 @@
+@model AdminOrderListViewModel
+@{
+    ViewData["Title"] = "Orders";
+}
+
+<h1 class="admin-h1">Orders</h1>
+
+<form method="get" class="admin-filter" role="search">
+    <input class="form-control" name="Search" value="@Model.Query.Search" placeholder="Order number or email" maxlength="64" aria-label="Search orders" />
+    <select class="form-select" name="Status" aria-label="Filter by status">
+        <option value="">All statuses</option>
+        @foreach (var status in Model.StatusOptions)
+        {
+            <option value="@status" selected="@(Model.Query.Status == status)">@status</option>
+        }
+    </select>
+    <button class="button button-secondary" type="submit">Filter</button>
+</form>
+
+@if (Model.Orders.Count == 0)
+{
+    <p class="admin-empty">No orders match your filters.</p>
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead><tr><th scope="col">Order</th><th scope="col">Customer</th><th scope="col">Date</th><th scope="col">Total</th><th scope="col">Payment</th><th scope="col">Status</th><th scope="col"></th></tr></thead>
+            <tbody>
+                @foreach (var order in Model.Orders)
+                {
+                    <tr>
+                        <th scope="row">@order.OrderNumber</th>
+                        <td>@order.CustomerEmail</td>
+                        <td>@order.CreatedAtUtc.ToString("dd MMM yyyy")</td>
+                        <td>@order.GrandTotal.ToString("C")</td>
+                        <td><span class="status-pill @(order.PaymentStatus == "Succeeded" ? "status-paid" : "")">@order.PaymentStatus</span></td>
+                        <td><span class="status-pill">@order.OrderStatus</span></td>
+                        <td><a class="button button-secondary button-small" asp-action="Details" asp-route-id="@order.OrderId">View</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @await Html.PartialAsync("_AdminPager", (PagedViewModel)Model)
+}

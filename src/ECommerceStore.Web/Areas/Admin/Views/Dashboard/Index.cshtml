@@ -1,0 +1,42 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<h1 class="admin-h1">Dashboard</h1>
+
+<div class="admin-metrics">
+    <div class="metric-card"><span class="metric-label">Products</span><span class="metric-value">@Model.TotalProducts</span><span class="metric-sub">@Model.ActiveProducts active</span></div>
+    <div class="metric-card"><span class="metric-label">Customers</span><span class="metric-value">@Model.TotalCustomers</span><span class="metric-sub">registered</span></div>
+    <div class="metric-card"><span class="metric-label">Orders</span><span class="metric-value">@Model.TotalOrders</span><span class="metric-sub">@Model.PendingOrders pending · @Model.CompletedOrders delivered</span></div>
+    <div class="metric-card metric-accent"><span class="metric-label">Revenue (paid)</span><span class="metric-value">@Model.Revenue.ToString("C")</span><span class="metric-sub">successful payments</span></div>
+</div>
+
+<section class="admin-panel">
+    <div class="admin-panel-head">
+        <h2>Low stock (≤ @Model.LowStockThreshold)</h2>
+        <a class="text-link" asp-controller="Products" asp-action="Index">Manage products →</a>
+    </div>
+    @if (Model.LowStockProducts.Count == 0)
+    {
+        <p class="admin-empty">No active in-stock products are at or below the low-stock threshold.</p>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead><tr><th scope="col">Product</th><th scope="col">Stock</th><th scope="col"></th></tr></thead>
+                <tbody>
+                    @foreach (var item in Model.LowStockProducts)
+                    {
+                        <tr>
+                            <th scope="row">@item.Name</th>
+                            <td>@item.StockQuantity</td>
+                            <td><a class="button button-secondary button-small" asp-controller="Products" asp-action="Edit" asp-route-id="@item.Id">Edit</a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

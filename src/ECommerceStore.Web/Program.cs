@@ -1,6 +1,8 @@
 using ECommerceStore.Web.Data;
 using ECommerceStore.Web.Data.Seed;
 using ECommerceStore.Web.Models.Identity;
+using ECommerceStore.Web.Areas.Admin;
+using ECommerceStore.Web.Services.Admin;
 using ECommerceStore.Web.Services.AI;
 using ECommerceStore.Web.Services.Common;
 using ECommerceStore.Web.Services.Catalog;
@@ -107,10 +109,18 @@ builder.Services.AddScoped<ICheckoutService, CheckoutService>();
 builder.Services.AddSingleton<IInvoicePdfService, InvoicePdfService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddSingleton<IAIService, MockAIService>();
+builder.Services.AddScoped<IAdminDashboardService, AdminDashboardService>();
+builder.Services.AddScoped<IAdminProductService, AdminProductService>();
+builder.Services.AddScoped<IAdminCategoryService, AdminCategoryService>();
+builder.Services.AddScoped<IAdminOrderService, AdminOrderService>();
+builder.Services.AddScoped<IAdminCustomerService, AdminCustomerService>();
 builder.Services.AddScoped<IOrderConfirmationDispatcher, OrderConfirmationDispatcher>();
 
 builder.Services.AddControllersWithViews(options =>
-    options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));
+{
+    options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
+    options.Conventions.Add(new AdminAreaAuthorizationConvention());
+});
 
 QuestPDF.Settings.License = LicenseType.Community;
 
@@ -130,7 +140,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseStatusCodePagesWithReExecute("/Home/StatusCode", "?code={0}");
+app.UseStatusCodePagesWithReExecute("/status/{0}");
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();

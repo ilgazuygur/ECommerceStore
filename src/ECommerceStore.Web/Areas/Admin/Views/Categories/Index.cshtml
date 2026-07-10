@@ -1,0 +1,47 @@
+@model AdminCategoryListViewModel
+@{
+    ViewData["Title"] = "Categories";
+}
+
+<div class="admin-panel-head">
+    <h1 class="admin-h1">Categories</h1>
+    <a class="button button-primary" asp-action="Create">New category</a>
+</div>
+
+@if (Model.Categories.Count == 0)
+{
+    <p class="admin-empty">No categories yet.</p>
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead><tr><th scope="col">Name</th><th scope="col">Slug</th><th scope="col">Products</th><th scope="col">State</th><th scope="col">Actions</th></tr></thead>
+            <tbody>
+                @foreach (var category in Model.Categories)
+                {
+                    <tr>
+                        <th scope="row">@category.Name</th>
+                        <td>@category.Slug</td>
+                        <td>@category.ProductCount</td>
+                        <td><span class="status-pill @(category.IsActive ? "status-paid" : "")">@(category.IsActive ? "Active" : "Inactive")</span></td>
+                        <td class="table-actions">
+                            <a class="button button-secondary button-small" asp-action="Edit" asp-route-id="@category.Id">Edit</a>
+                            @if (category.IsActive)
+                            {
+                                <form method="post" asp-action="Deactivate" asp-route-id="@category.Id" onsubmit="return confirm('Deactivate this category? Its products will disappear from the storefront.');"><button class="button button-secondary button-small" type="submit">Deactivate</button></form>
+                            }
+                            else
+                            {
+                                <form method="post" asp-action="Activate" asp-route-id="@category.Id"><button class="button button-secondary button-small" type="submit">Activate</button></form>
+                            }
+                            <form method="post" asp-action="Delete" asp-route-id="@category.Id" onsubmit="return confirm('Delete this category? If it has products it will be deactivated instead.');"><button class="button button-danger button-small" type="submit">Delete</button></form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @await Html.PartialAsync("_AdminPager", (PagedViewModel)Model)
+}

@@ -1,0 +1,65 @@
+@model AdminOrderDetailsViewModel
+@{
+    ViewData["Title"] = $"Order {Model.OrderNumber}";
+}
+
+<div class="admin-panel-head">
+    <h1 class="admin-h1">@Model.OrderNumber</h1>
+    <a class="text-link" asp-action="Index">← All orders</a>
+</div>
+<p class="row-sub">Placed @Model.CreatedAtUtc.ToString("dd MMM yyyy HH:mm") UTC · Invoice @Model.InvoiceNumber</p>
+
+<div class="admin-columns">
+    <section class="admin-panel">
+        <h2>Items</h2>
+        <div class="table-scroll">
+            <table class="data-table">
+                <thead><tr><th scope="col">Item</th><th scope="col">Qty</th><th scope="col">Unit</th><th scope="col">Line</th></tr></thead>
+                <tbody>
+                    @foreach (var line in Model.Lines)
+                    {
+                        <tr><th scope="row">@line.ProductName</th><td>@line.Quantity</td><td>@line.PaidUnitPrice.ToString("C")</td><td>@line.LineTotal.ToString("C")</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <dl class="admin-totals">
+            <div><dt>List subtotal</dt><dd>@Model.Subtotal.ToString("C")</dd></div>
+            <div><dt>Discount</dt><dd>−@Model.Discount.ToString("C")</dd></div>
+            <div><dt>Shipping</dt><dd>@Model.Shipping.ToString("C")</dd></div>
+            <div class="summary-total"><dt>Grand total</dt><dd>@Model.GrandTotal.ToString("C")</dd></div>
+        </dl>
+    </section>
+
+    <aside class="admin-panel">
+        <h2>Customer</h2>
+        <p>@Model.CustomerName<br />@Model.CustomerEmail</p>
+        <p class="row-sub">@Model.Address</p>
+
+        <h2 class="mt-4">Status</h2>
+        <p>
+            <span class="status-pill @(Model.PaymentStatus == "Succeeded" ? "status-paid" : "")">Payment: @Model.PaymentStatus</span>
+            <span class="status-pill">Order: @Model.OrderStatus</span>
+        </p>
+
+        @if (Model.AllowedTransitions.Count == 0)
+        {
+            <p class="row-sub">No further status changes are possible for this order.</p>
+        }
+        else
+        {
+            <form method="post" asp-action="UpdateStatus" class="admin-status-form" onsubmit="return confirm('Apply this order status change?');">
+                <input type="hidden" name="OrderId" value="@Model.OrderId" />
+                <input type="hidden" name="Version" value="@Model.Version" />
+                <label for="newStatus">Move order to</label>
+                <select id="newStatus" name="NewStatus" class="form-select">
+                    @foreach (var status in Model.AllowedTransitions)
+                    {
+                        <option value="@status">@status</option>
+                    }
+                </select>
+                <button class="button button-primary" type="submit">Update status</button>
+            </form>
+        }
+    </aside>
+</div>

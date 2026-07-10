@@ -1,0 +1,58 @@
+@model AdminCustomerDetailsViewModel
+@{
+    ViewData["Title"] = Model.FullName;
+}
+
+<div class="admin-panel-head">
+    <h1 class="admin-h1">@Model.FullName</h1>
+    <a class="text-link" asp-action="Index">← All customers</a>
+</div>
+
+<div class="admin-columns">
+    <aside class="admin-panel">
+        <h2>Profile</h2>
+        <p>
+            @Model.Email<br />
+            @(string.IsNullOrWhiteSpace(Model.PhoneNumber) ? "No phone number" : Model.PhoneNumber)<br />
+            <span class="row-sub">Joined @Model.CreatedAtUtc.ToString("dd MMM yyyy")</span>
+        </p>
+        <p>
+            <span class="status-pill @(Model.IsEnabled ? "status-paid" : "")">@(Model.IsEnabled ? "Enabled" : "Disabled")</span>
+            @if (Model.IsAdministrator) { <span class="status-pill">Administrator</span> }
+        </p>
+        @if (Model.IsEnabled)
+        {
+            <form method="post" asp-action="Disable" asp-route-id="@Model.Id" onsubmit="return confirm('Disable this account? The customer will be signed out on their next request.');">
+                <button class="button button-danger" type="submit">Disable account</button>
+            </form>
+        }
+        else
+        {
+            <form method="post" asp-action="Enable" asp-route-id="@Model.Id">
+                <button class="button button-primary" type="submit">Re-enable account</button>
+            </form>
+        }
+    </aside>
+
+    <section class="admin-panel">
+        <h2>Orders</h2>
+        @if (Model.Orders.Count == 0)
+        {
+            <p class="admin-empty">This customer has not placed any orders.</p>
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead><tr><th scope="col">Order</th><th scope="col">Date</th><th scope="col">Total</th><th scope="col">Status</th></tr></thead>
+                    <tbody>
+                        @foreach (var order in Model.Orders)
+                        {
+                            <tr><th scope="row">@order.OrderNumber</th><td>@order.CreatedAtUtc.ToString("dd MMM yyyy")</td><td>@order.GrandTotal.ToString("C")</td><td><span class="status-pill">@order.OrderStatus</span></td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+</div>

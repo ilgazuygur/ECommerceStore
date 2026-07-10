@@ -1,0 +1,63 @@
+@model AdminProductListViewModel
+@{
+    ViewData["Title"] = "Products";
+}
+
+<div class="admin-panel-head">
+    <h1 class="admin-h1">Products</h1>
+    <a class="button button-primary" asp-action="Create">New product</a>
+</div>
+
+<form method="get" class="admin-filter" role="search">
+    <input class="form-control" name="Keyword" value="@Model.Query.Keyword" placeholder="Search by name" maxlength="100" aria-label="Search products" />
+    <select class="form-select" name="CategoryId" aria-label="Filter by category">
+        <option value="">All categories</option>
+        @foreach (var category in Model.Categories)
+        {
+            <option value="@category.Id" selected="@(Model.Query.CategoryId == category.Id)">@category.Name</option>
+        }
+    </select>
+    <label class="check-row"><input type="checkbox" name="ActiveOnly" value="true" checked="@(Model.Query.ActiveOnly == true)" /> Active only</label>
+    <button class="button button-secondary" type="submit">Filter</button>
+</form>
+
+@if (Model.Products.Count == 0)
+{
+    <p class="admin-empty">No products match your filters.</p>
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr><th scope="col">Name</th><th scope="col">Category</th><th scope="col">Price</th><th scope="col">Stock</th><th scope="col">State</th><th scope="col">Actions</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var product in Model.Products)
+                {
+                    <tr>
+                        <th scope="row">@product.Name @if (product.IsFeatured) { <span class="tag">Featured</span> }</th>
+                        <td>@product.CategoryName</td>
+                        <td>@((product.DiscountPrice ?? product.NormalPrice).ToString("C"))@if (product.DiscountPrice.HasValue) { <del>@product.NormalPrice.ToString("C")</del> }</td>
+                        <td>@product.StockQuantity</td>
+                        <td><span class="status-pill @(product.IsActive ? "status-paid" : "")">@(product.IsActive ? "Active" : "Inactive")</span></td>
+                        <td class="table-actions">
+                            <a class="button button-secondary button-small" asp-action="Edit" asp-route-id="@product.Id">Edit</a>
+                            @if (product.IsActive)
+                            {
+                                <form method="post" asp-action="Deactivate" asp-route-id="@product.Id" onsubmit="return confirm('Deactivate this product? It will disappear from the storefront.');"><button class="button button-secondary button-small" type="submit">Deactivate</button></form>
+                            }
+                            else
+                            {
+                                <form method="post" asp-action="Activate" asp-route-id="@product.Id"><button class="button button-secondary button-small" type="submit">Activate</button></form>
+                            }
+                            <form method="post" asp-action="Delete" asp-route-id="@product.Id" onsubmit="return confirm('Delete this product? If it has orders it will be deactivated instead.');"><button class="button button-danger button-small" type="submit">Delete</button></form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @await Html.PartialAsync("_AdminPager", (PagedViewModel)Model)
+}

@@ -128,6 +128,30 @@ QuestPDF.Settings.License = LicenseType.Community;
 
 var app = builder.Build();
 
+// Security response headers on every response, including static files. The
+// Content-Security-Policy allows only same-origin scripts (no inline script),
+// permits external HTTPS product images, and forbids framing. Bootstrap sets
+// element styles via JavaScript, so inline styles are allowed but scripts are not.
+app.Use(async (context, next) =>
+{
+    var headers = context.Response.Headers;
+    headers["X-Content-Type-Options"] = "nosniff";
+    headers["X-Frame-Options"] = "DENY";
+    headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    headers["Content-Security-Policy"] =
+        "default-src 'self'; " +
+        "script-src 'self'; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "img-src 'self' https: data:; " +
+        "font-src 'self'; " +
+        "connect-src 'self'; " +
+        "form-action 'self'; " +
+        "base-uri 'self'; " +
+        "object-src 'none'; " +
+        "frame-ancestors 'none'";
+    await next();
+});
+
 var storeCulture = CultureInfo.GetCultureInfo("en-US");
 app.UseRequestLocalization(new RequestLocalizationOptions
 {

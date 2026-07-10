@@ -48,7 +48,7 @@
         }
         else
         {
-            <form method="post" asp-action="UpdateStatus" class="admin-status-form" onsubmit="return confirm('Apply this order status change?');">
+            <form method="post" asp-action="UpdateStatus" class="admin-status-form" data-confirm="Apply this order status change?">
                 <input type="hidden" name="OrderId" value="@Model.OrderId" />
                 <input type="hidden" name="Version" value="@Model.Version" />
                 <label for="newStatus">Move order to</label>

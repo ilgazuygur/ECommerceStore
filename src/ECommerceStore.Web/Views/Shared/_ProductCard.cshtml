@@ -1,7 +1,7 @@
 @model ProductCardViewModel
 <article class="product-card">
     <a class="product-image" href="/products/@Model.Slug" aria-label="View @Model.Name">
-        @if (!string.IsNullOrWhiteSpace(Model.ImageUrl)) { <img src="@Model.ImageUrl" alt="@Model.Name" loading="lazy" onerror="this.onerror=null;this.src='/images/product-placeholder.svg';" /> }
+        @if (!string.IsNullOrWhiteSpace(Model.ImageUrl)) { <img src="@Model.ImageUrl" alt="@Model.Name" loading="lazy" data-fallback="/images/product-placeholder.svg" /> }
         else { <span class="image-placeholder" aria-hidden="true"><span>@Model.Name[..1]</span></span> }
         @if (Model.HasDiscount) { <span class="product-badge">Sale</span> }
         @if (!Model.IsInStock) { <span class="stock-badge">Out of stock</span> }

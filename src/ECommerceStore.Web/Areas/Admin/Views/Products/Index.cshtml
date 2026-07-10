@@ -45,13 +45,13 @@ else
                             <a class="button button-secondary button-small" asp-action="Edit" asp-route-id="@product.Id">Edit</a>
                             @if (product.IsActive)
                             {
-                                <form method="post" asp-action="Deactivate" asp-route-id="@product.Id" onsubmit="return confirm('Deactivate this product? It will disappear from the storefront.');"><button class="button button-secondary button-small" type="submit">Deactivate</button></form>
+                                <form method="post" asp-action="Deactivate" asp-route-id="@product.Id" data-confirm="Deactivate this product? It will disappear from the storefront."><button class="button button-secondary button-small" type="submit">Deactivate</button></form>
                             }
                             else
                             {
                                 <form method="post" asp-action="Activate" asp-route-id="@product.Id"><button class="button button-secondary button-small" type="submit">Activate</button></form>
                             }
-                            <form method="post" asp-action="Delete" asp-route-id="@product.Id" onsubmit="return confirm('Delete this product? If it has orders it will be deactivated instead.');"><button class="button button-danger button-small" type="submit">Delete</button></form>
+                            <form method="post" asp-action="Delete" asp-route-id="@product.Id" data-confirm="Delete this product? If it has orders it will be deactivated instead."><button class="button button-danger button-small" type="submit">Delete</button></form>
                         </td>
                     </tr>
                 }

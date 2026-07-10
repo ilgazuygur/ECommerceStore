@@ -30,7 +30,8 @@
         <span asp-validation-for="FullDescription"></span>
         @if (aiEnabled)
         {
-            <button type="button" class="button button-secondary button-small mt-2" id="ai-draft-btn">Draft with AI (editable)</button>
+            <button type="button" class="button button-secondary button-small mt-2" id="ai-draft-btn"
+                    data-draft-url="@Url.Action("DraftDescription", "Products", new { area = "Admin" })" data-target="FullDescription">Draft with AI (editable)</button>
             <small class="row-sub">AI text is a draft — review and edit before saving. Nothing is saved automatically.</small>
         }
     </div>
@@ -62,23 +63,3 @@
         <a class="button button-secondary" asp-action="Index">Cancel</a>
     </div>
 </form>
-
-@if (aiEnabled)
-{
-    <script>
-        document.getElementById('ai-draft-btn')?.addEventListener('click', async function () {
-            var name = document.getElementById('Name')?.value || '';
-            var categorySelect = document.getElementById('CategoryId');
-            var category = categorySelect ? (categorySelect.options[categorySelect.selectedIndex]?.text || '') : '';
-            var token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
-            var body = new URLSearchParams({ name: name, category: category, __RequestVerificationToken: token });
-            try {
-                var response = await fetch('@Url.Action("DraftDescription", "Products", new { area = "Admin" })', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body });
-                var data = await response.json();
-                if (data.available && data.draft) {
-                    document.getElementById('FullDescription').value = data.draft;
-                }
-            } catch (error) { /* draft is optional; manual entry always works */ }
-        });
-    </script>
-}

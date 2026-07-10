@@ -232,14 +232,14 @@
 
 - [x] **T-AI-001** Implement provider-independent `IAIService`, `AIServiceOptions`, deterministic `MockAIService`, and disabled mode with no key/network/core-flow dependency.
 - [x] Document the exact composition-root seam and security/privacy/retry/rate/cost work required for a future provider.
-- [ ] **T-AI-002 (optional)** Add administrator-only, anti-forgery-protected “Draft product description” that returns editable unsaved mock text and never overwrites automatically. _(Optional; will be wired into the Phase 10 admin product form.)_
+- [x] **T-AI-002 (optional)** Add administrator-only, anti-forgery-protected “Draft product description” that returns editable unsaved mock text and never overwrites automatically. _(Wired into the admin product form; button posts to `Products/DraftDescription`, protected by the global anti-forgery filter and admin authorization, and only fills the editable Full description field.)_
 - [x] Add tests proving deterministic mock behavior and all required commerce flows work with AI disabled.
 
 ### Phase 12 Definition of Done
 
 - [x] Required app works unchanged when AI is disabled. _(No catalog/cart/checkout/order service references IAIService.)_
 - [x] No real provider package, key, or call exists.
-- [ ] Optional draft, if implemented, is explicit, editable, encoded, bounded, and admin-only. _(Optional AI-002 not yet implemented.)_
+- [x] Optional draft, if implemented, is explicit, editable, encoded, bounded, and admin-only. _(AI-002 implemented: admin-only, anti-forgery-protected, returns editable unsaved text, never auto-saves.)_
 
 ## Phase 13 — UI, accessibility, errors, and security
 
@@ -248,12 +248,12 @@
 - [ ] **T-UI-003** Complete friendly empty/validation/success/failure/missing-image states and custom 404/access-denied/Production error pages.
 - [ ] **T-SEC-001** Apply/verify anti-forgery on all unsafe actions, server validation, dedicated input models, explicit mapping, and over-post protection.
 - [ ] **T-SEC-002** Audit every role/ownership check and return URL; eliminate ID-only access and external redirects.
-- [ ] **T-SEC-003** Audit Razor/email/PDF encoding, parameterized EF queries/allow-listed sorts, upload execution/path/content, and CSP/nosniff behavior.
+- [x] **T-SEC-003** Audit Razor/email/PDF encoding, parameterized EF queries/allow-listed sorts, upload execution/path/content, and CSP/nosniff behavior. _(Added response-header middleware: strict CSP with `script-src 'self'` (no inline script), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`. All inline scripts/handlers moved to `site.js`; sorts are enum-bound; EF is parameterized; uploads are re-encoded to random names.)_
 - [ ] **T-SEC-004** Audit secrets/configuration, Production HTTPS/cookies, session/auth transition, and logs for credentials/tokens/card/Identity/PII leakage.
 - [ ] **T-SEC-005** Threat-model and retest checkout anti-forgery, replay, total tampering, payment privacy, stock races, and duplicate submissions.
 - [ ] **T-SEC-006** Inject email/PDF/image/database/concurrency/unexpected failures and verify safe Production messages, correlation IDs, rollback/commit boundaries, and Development-only diagnostics.
 - [ ] Run keyboard-only journeys and an automated accessibility scan; fix serious/critical findings.
-- [ ] Minimize JavaScript and verify every core action has a server fallback.
+- [x] Minimize JavaScript and verify every core action has a server fallback. _(Only Bootstrap bundle, jQuery-validation, and a small progressive-enhancement `site.js`; sort auto-submit keeps a `<noscript>` Apply button, and confirms/drafts degrade gracefully.)_
 
 ### Phase 13 Definition of Done
 

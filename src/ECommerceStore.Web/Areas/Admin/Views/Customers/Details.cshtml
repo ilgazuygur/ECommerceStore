@@ -22,7 +22,7 @@
         </p>
         @if (Model.IsEnabled)
         {
-            <form method="post" asp-action="Disable" asp-route-id="@Model.Id" onsubmit="return confirm('Disable this account? The customer will be signed out on their next request.');">
+            <form method="post" asp-action="Disable" asp-route-id="@Model.Id" data-confirm="Disable this account? The customer will be signed out on their next request.">
                 <button class="button button-danger" type="submit">Disable account</button>
             </form>
         }

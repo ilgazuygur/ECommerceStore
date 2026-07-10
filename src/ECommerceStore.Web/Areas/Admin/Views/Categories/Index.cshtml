@@ -29,13 +29,13 @@ else
                             <a class="button button-secondary button-small" asp-action="Edit" asp-route-id="@category.Id">Edit</a>
                             @if (category.IsActive)
                             {
-                                <form method="post" asp-action="Deactivate" asp-route-id="@category.Id" onsubmit="return confirm('Deactivate this category? Its products will disappear from the storefront.');"><button class="button button-secondary button-small" type="submit">Deactivate</button></form>
+                                <form method="post" asp-action="Deactivate" asp-route-id="@category.Id" data-confirm="Deactivate this category? Its products will disappear from the storefront."><button class="button button-secondary button-small" type="submit">Deactivate</button></form>
                             }
                             else
                             {
                                 <form method="post" asp-action="Activate" asp-route-id="@category.Id"><button class="button button-secondary button-small" type="submit">Activate</button></form>
                             }
-                            <form method="post" asp-action="Delete" asp-route-id="@category.Id" onsubmit="return confirm('Delete this category? If it has products it will be deactivated instead.');"><button class="button button-danger button-small" type="submit">Delete</button></form>
+                            <form method="post" asp-action="Delete" asp-route-id="@category.Id" data-confirm="Delete this category? If it has products it will be deactivated instead."><button class="button button-danger button-small" type="submit">Delete</button></form>
                         </td>
                     </tr>
                 }

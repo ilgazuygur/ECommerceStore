@@ -18,6 +18,7 @@ public sealed class ProductsController(IAdminProductService products, IAIService
     }
 
     [HttpPost]
+    [RequestFormLimits(MultipartBodyLengthLimit = 6 * 1024 * 1024)]
     public async Task<IActionResult> Create(AdminProductInput input, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
@@ -52,6 +53,7 @@ public sealed class ProductsController(IAdminProductService products, IAIService
     }
 
     [HttpPost]
+    [RequestFormLimits(MultipartBodyLengthLimit = 6 * 1024 * 1024)]
     public async Task<IActionResult> Edit(AdminProductInput input, CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)

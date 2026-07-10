@@ -20,7 +20,7 @@ else
             {
                 <article class="cart-line">
                     <a class="cart-line-image" asp-controller="Catalog" asp-action="Details" asp-route-slug="@line.Slug" aria-label="View @line.Name">
-                        @if (line.ImageUrl is null) { <span class="image-placeholder"><span>@line.Name[..1]</span></span> } else { <img src="@line.ImageUrl" alt="" /> }
+                        @if (line.ImageUrl is null) { <span class="image-placeholder"><span>@line.Name[..1]</span></span> } else { <img src="@line.ImageUrl" alt="" onerror="this.onerror=null;this.src='/images/product-placeholder.svg';" /> }
                     </a>
                     <div class="cart-line-copy"><span class="eyebrow">@line.CategoryName</span><h2><a asp-controller="Catalog" asp-action="Details" asp-route-slug="@line.Slug">@line.Name</a></h2><span>@line.PaidUnitPrice.ToString("C") each</span></div>
                     <div class="cart-quantity-controls"><form asp-action="Decrement" method="post"><input type="hidden" name="productId" value="@line.ProductId" /><button class="quantity-step" type="submit" aria-label="Decrease @line.Name quantity">−</button></form><form asp-action="Update" method="post" class="cart-quantity">

@@ -4,7 +4,7 @@
     var aiEnabled = ViewBag.AiEnabled is true;
 }
 
-<form method="post" class="admin-form">
+<form method="post" class="admin-form" enctype="multipart/form-data">
     <input asp-for="Id" type="hidden" />
     <input asp-for="Version" type="hidden" />
     <div asp-validation-summary="All" class="validation-summary"></div>
@@ -41,7 +41,16 @@
         <div><label asp-for="StockQuantity">Stock</label><input asp-for="StockQuantity" class="form-control" type="number" min="0" /><span asp-validation-for="StockQuantity"></span></div>
     </div>
 
-    <div><label asp-for="ImageUrl">Image URL <small>(https, optional)</small></label><input asp-for="ImageUrl" class="form-control" /><span asp-validation-for="ImageUrl"></span></div>
+    <fieldset class="admin-image-fields">
+        <legend>Product image</legend>
+        <div><label asp-for="ImageUpload">Upload JPEG, PNG, or WebP <small>(max 5 MiB)</small></label><input asp-for="ImageUpload" class="form-control" type="file" accept="image/jpeg,image/png,image/webp" /><span asp-validation-for="ImageUpload"></span></div>
+        <div><label asp-for="ImageUrl">Or image URL <small>(https, optional)</small></label><input asp-for="ImageUrl" class="form-control" /><span asp-validation-for="ImageUrl"></span></div>
+        @if (Model.Id.HasValue)
+        {
+            <label class="check-row"><input asp-for="RemoveImage" /> Remove the current image</label>
+        }
+        <small class="row-sub">Choose one source. Uploaded images are decoded, dimension-checked, and re-encoded under a random server filename.</small>
+    </fieldset>
 
     <div class="admin-checks">
         <label class="check-row"><input asp-for="IsActive" /> Active</label>

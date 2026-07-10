@@ -63,6 +63,8 @@ public sealed class AdminProductInput
     public bool IsFeatured { get; set; }
     public bool IsActive { get; set; } = true;
     [StringLength(2048), Url] public string? ImageUrl { get; set; }
+    [Display(Name = "Upload image")] public IFormFile? ImageUpload { get; set; }
+    public bool RemoveImage { get; set; }
     public int Version { get; set; }
 }
 

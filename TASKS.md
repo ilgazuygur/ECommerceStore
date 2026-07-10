@@ -214,19 +214,19 @@
 
 ## Phase 11 — Product image uploads
 
-- [ ] **T-UPLOAD-001** Implement bounded JPEG/PNG/WebP validation using extension, claimed MIME, independent decoded signature/type, size, generated name, and contained storage path.
-- [ ] Reject SVG, empty, oversized, malformed/truncated, content mismatch, double-extension, traversal, executable, polyglot, and decompression-bomb candidates.
-- [ ] Store with random canonical name/create-new semantics and ensure upload directory serves static non-executable content only.
-- [ ] Coordinate new write/database update/old managed file cleanup and compensate failure/orphans safely.
-- [ ] Validate external image URL scheme/length/credentials and keep missing-image fallback.
-- [ ] Add valid-format and adversarial upload tests plus write/database/delete failure injection.
-- [ ] Complete valid upload/replacement and supplied invalid-upload manual step.
+- [x] **T-UPLOAD-001** Implement bounded JPEG/PNG/WebP validation using extension, claimed MIME, independent decoded signature/type, size, generated name, and contained storage path.
+- [x] Reject SVG, empty, oversized, malformed/truncated, content mismatch, double-extension, traversal, executable, polyglot, and decompression-bomb candidates.
+- [x] Store with random canonical name/create-new semantics and ensure upload directory serves static non-executable content only.
+- [x] Coordinate new write/database update/old managed file cleanup and compensate failure/orphans safely.
+- [x] Validate external image URL scheme/length/credentials and keep missing-image fallback.
+- [x] Add valid-format and adversarial upload tests plus write/database/delete failure injection.
+- [x] Complete valid upload/replacement and supplied invalid-upload manual step.
 
 ### Phase 11 Definition of Done
 
-- [ ] Client filename/MIME is never trusted alone and no path escapes the upload root.
-- [ ] Every accepted file is an allow-listed decodable raster with safe name/size.
-- [ ] Failure leaves neither unsafe database reference nor executable public content.
+- [x] Client filename/MIME is never trusted alone and no path escapes the upload root.
+- [x] Every accepted file is an allow-listed decodable raster with safe name/size.
+- [x] Failure leaves neither unsafe database reference nor executable public content.
 
 ## Phase 12 — AI abstraction
 

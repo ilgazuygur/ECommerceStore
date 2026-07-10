@@ -9,9 +9,11 @@ using ECommerceStore.Web.Services.Admin;
 using ECommerceStore.Web.Services.Cart;
 using ECommerceStore.Web.Services.Checkout;
 using ECommerceStore.Web.Services.Common;
+using ECommerceStore.Web.Services.Images;
 using ECommerceStore.Web.Services.Payments;
 using ECommerceStore.Web.ViewModels.Admin;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -39,7 +41,7 @@ public sealed class AdminServiceTests
         context.CartItems.Add(new CartItem { CartId = cart.Id, ProductId = product.Id, Quantity = 1 });
         await context.SaveChangesAsync();
 
-        var result = await new AdminProductService(context, Store).DeleteAsync(product.Id);
+        var result = await new AdminProductService(context, Store, new NoopProductImageService()).DeleteAsync(product.Id);
 
         Assert.Equal(AdminOutcome.Blocked, result.Outcome);
         Assert.False(await context.Products.Where(p => p.Id == product.Id).Select(p => p.IsActive).SingleAsync());
@@ -53,7 +55,7 @@ public sealed class AdminServiceTests
         await using var context = db.CreateContext();
         var product = await SeedProductAsync(context, stock: 5);
 
-        var result = await new AdminProductService(context, Store).DeleteAsync(product.Id);
+        var result = await new AdminProductService(context, Store, new NoopProductImageService()).DeleteAsync(product.Id);
 
         Assert.True(result.Succeeded);
         Assert.False(await context.Products.AnyAsync(p => p.Id == product.Id));
@@ -65,7 +67,7 @@ public sealed class AdminServiceTests
         await using var db = await SqliteTestDatabase.CreateAsync();
         await using var context = db.CreateContext();
         var product = await SeedProductAsync(context, stock: 5);
-        var service = new AdminProductService(context, Store);
+        var service = new AdminProductService(context, Store, new NoopProductImageService());
         var input = await service.GetForEditAsync(product.Id);
 
         // Another writer bumps the version first.
@@ -87,13 +89,17 @@ public sealed class AdminServiceTests
         await using var db = await SqliteTestDatabase.CreateAsync();
         await using var context = db.CreateContext();
         var existing = await SeedProductAsync(context, stock: 5);
-        var service = new AdminProductService(context, Store);
+        var service = new AdminProductService(context, Store, new NoopProductImageService());
         var valid = ValidProductInput(existing.CategoryId);
 
         Assert.Equal(AdminOutcome.Invalid, (await service.CreateAsync(WithChanges(valid, input => input.NormalPrice = 0m))).Outcome);
         Assert.Equal(AdminOutcome.Invalid, (await service.CreateAsync(WithChanges(valid, input => input.DiscountPrice = -1m))).Outcome);
         Assert.Equal(AdminOutcome.Invalid, (await service.CreateAsync(WithChanges(valid, input => input.DiscountPrice = input.NormalPrice))).Outcome);
         Assert.Equal(AdminOutcome.Invalid, (await service.CreateAsync(WithChanges(valid, input => input.StockQuantity = -1))).Outcome);
+        Assert.Equal(AdminOutcome.Invalid, (await service.CreateAsync(WithChanges(valid, input => input.ImageUrl = "https://user:password@example.test/image.png"))).Outcome);
+        Assert.Equal(AdminOutcome.Invalid, (await service.CreateAsync(WithChanges(valid, input => input.ImageUrl = "https://example.test/" + new string('a', 2048)))).Outcome);
+        Assert.Equal(AdminOutcome.Invalid, (await service.CreateAsync(WithChanges(valid, input => input.ImageUrl = "http://example.test/image.png"))).Outcome);
+        Assert.Equal(AdminOutcome.Invalid, (await service.CreateAsync(WithChanges(valid, input => input.ImageUrl = "ftp://example.test/image.png"))).Outcome);
 
         var result = await service.CreateAsync(valid);
         Assert.True(result.Succeeded);
@@ -108,7 +114,7 @@ public sealed class AdminServiceTests
         await PlaceOrderAsync(context, "snapshot-buyer");
         var product = await context.Products.SingleAsync();
         var before = await context.OrderItems.AsNoTracking().SingleAsync();
-        var service = new AdminProductService(context, Store);
+        var service = new AdminProductService(context, Store, new NoopProductImageService());
         var input = (await service.GetForEditAsync(product.Id))!;
         input.Name = "Renamed Widget";
         input.NormalPrice = 99m;
@@ -119,6 +125,59 @@ public sealed class AdminServiceTests
         Assert.Equal(before.ListUnitPrice, after.ListUnitPrice);
         Assert.Equal(before.PaidUnitPrice, after.PaidUnitPrice);
         Assert.Equal(before.LineTotal, after.LineTotal);
+    }
+
+    [Fact]
+    public async Task Product_upload_persists_managed_reference_and_remove_cleans_old_file()
+    {
+        await using var db = await SqliteTestDatabase.CreateAsync();
+        await using var context = db.CreateContext();
+        var existing = await SeedProductAsync(context, stock: 5);
+        var images = new TrackingProductImageService("uploads/products/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png");
+        var service = new AdminProductService(context, Store, images);
+        var input = ValidProductInput(existing.CategoryId);
+        input.ImageUrl = null;
+        input.ImageUpload = DummyUpload();
+
+        Assert.True((await service.CreateAsync(input)).Succeeded);
+        var created = await context.Products.SingleAsync(product => product.Name == input.Name);
+        Assert.Equal(ProductImageKind.Local, created.ImageKind);
+        Assert.Equal(images.SavedPath, created.ImageLocation);
+
+        var edit = (await service.GetForEditAsync(created.Id))!;
+        edit.RemoveImage = true;
+        Assert.True((await service.UpdateAsync(edit)).Succeeded);
+        var updated = await context.Products.AsNoTracking().SingleAsync(product => product.Id == created.Id);
+        Assert.Equal(ProductImageKind.None, updated.ImageKind);
+        Assert.Null(updated.ImageLocation);
+        Assert.Contains(images.SavedPath, images.DeletedPaths);
+    }
+
+    [Fact]
+    public async Task Stale_product_upload_cleans_new_file_and_preserves_durable_product()
+    {
+        await using var db = await SqliteTestDatabase.CreateAsync();
+        await using var context = db.CreateContext();
+        var product = await SeedProductAsync(context, stock: 5);
+        var images = new TrackingProductImageService("uploads/products/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.webp");
+        var service = new AdminProductService(context, Store, images);
+        var edit = (await service.GetForEditAsync(product.Id))!;
+        edit.ImageUpload = DummyUpload();
+
+        await using (var other = db.CreateContext())
+        {
+            var durable = await other.Products.SingleAsync(candidate => candidate.Id == product.Id);
+            durable.StockQuantity = 99;
+            await other.SaveChangesAsync();
+        }
+
+        var result = await service.UpdateAsync(edit);
+        Assert.Equal(AdminOutcome.Conflict, result.Outcome);
+        Assert.Contains(images.SavedPath, images.DeletedPaths);
+        await using var verification = db.CreateContext();
+        var persisted = await verification.Products.AsNoTracking().SingleAsync(candidate => candidate.Id == product.Id);
+        Assert.Equal(ProductImageKind.None, persisted.ImageKind);
+        Assert.Null(persisted.ImageLocation);
     }
 
     // ---- Categories ----
@@ -381,6 +440,16 @@ public sealed class AdminServiceTests
         ImageUrl = "https://example.test/product.png"
     };
 
+    private static IFormFile DummyUpload()
+    {
+        var bytes = new byte[] { 1, 2, 3 };
+        return new FormFile(new MemoryStream(bytes), 0, bytes.Length, "ImageUpload", "photo.png")
+        {
+            Headers = new HeaderDictionary(),
+            ContentType = "image/png"
+        };
+    }
+
     private static AdminProductInput WithChanges(AdminProductInput source, Action<AdminProductInput> change)
     {
         var copy = new AdminProductInput
@@ -444,5 +513,28 @@ public sealed class AdminServiceTests
         public IReadOnlyList<AnonymousCartLine> Read() => [];
         public void Write(IEnumerable<AnonymousCartLine> lines) { }
         public void Clear() { }
+    }
+
+    private sealed class NoopProductImageService : IProductImageService
+    {
+        public Task<ProductImageSaveResult> ValidateAndSaveAsync(IFormFile file, CancellationToken cancellationToken = default) =>
+            Task.FromResult(ProductImageSaveResult.Invalid("Uploads are not configured for this test."));
+
+        public Task<bool> TryDeleteAsync(string relativePath, CancellationToken cancellationToken = default) => Task.FromResult(true);
+    }
+
+    private sealed class TrackingProductImageService(string savedPath) : IProductImageService
+    {
+        public string SavedPath { get; } = savedPath;
+        public List<string> DeletedPaths { get; } = [];
+
+        public Task<ProductImageSaveResult> ValidateAndSaveAsync(IFormFile file, CancellationToken cancellationToken = default) =>
+            Task.FromResult(ProductImageSaveResult.Saved(SavedPath));
+
+        public Task<bool> TryDeleteAsync(string relativePath, CancellationToken cancellationToken = default)
+        {
+            DeletedPaths.Add(relativePath);
+            return Task.FromResult(true);
+        }
     }
 }

@@ -4,7 +4,7 @@
 <nav class="breadcrumb-wrap" aria-label="Breadcrumb"><a asp-controller="Home" asp-action="Index">Home</a><span>/</span><a href="/category/@Model.CategorySlug">@Model.CategoryName</a><span>/</span><span aria-current="page">@Model.Name</span></nav>
 <section class="product-detail">
     <div class="detail-image">
-        @if (!string.IsNullOrWhiteSpace(Model.ImageUrl)) { <img src="@Model.ImageUrl" alt="@Model.Name" /> }
+        @if (!string.IsNullOrWhiteSpace(Model.ImageUrl)) { <img src="@Model.ImageUrl" alt="@Model.Name" onerror="this.onerror=null;this.src='/images/product-placeholder.svg';" /> }
         else { <span class="image-placeholder large" aria-hidden="true"><span>@Model.Name[..1]</span></span> }
         @if (Model.HasDiscount) { <span class="product-badge">Sale</span> }
     </div>

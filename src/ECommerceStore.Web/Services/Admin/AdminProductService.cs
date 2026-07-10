@@ -2,6 +2,7 @@ using System.Text;
 using ECommerceStore.Web.Data;
 using ECommerceStore.Web.Models.Catalog;
 using ECommerceStore.Web.Services.Common;
+using ECommerceStore.Web.Services.Images;
 using ECommerceStore.Web.ViewModels.Admin;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -19,7 +20,10 @@ public interface IAdminProductService
     Task<AdminResult> DeleteAsync(int id, CancellationToken cancellationToken = default);
 }
 
-public sealed class AdminProductService(ApplicationDbContext db, IOptions<StoreOptions> storeOptions) : IAdminProductService
+public sealed class AdminProductService(
+    ApplicationDbContext db,
+    IOptions<StoreOptions> storeOptions,
+    IProductImageService images) : IAdminProductService
 {
     private readonly int _pageSize = storeOptions.Value.AdminPageSize;
 
@@ -111,10 +115,26 @@ public sealed class AdminProductService(ApplicationDbContext db, IOptions<StoreO
         }
 
         var product = new Product { Slug = await GenerateSlugAsync(input.Name, null, cancellationToken) };
+        var image = await SelectImageAsync(input, ProductImageKind.None, null, isCreate: true, cancellationToken);
+        if (image.Error is not null)
+        {
+            return AdminResult.Invalid(image.Error);
+        }
+
         Apply(product, input);
+        product.ImageKind = image.Kind;
+        product.ImageLocation = image.Location;
         db.Products.Add(product);
-        await db.SaveChangesAsync(cancellationToken);
-        return AdminResult.Ok("Product created.");
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            return AdminResult.Ok("Product created.");
+        }
+        catch (DbUpdateException)
+        {
+            await CleanupNewImageAsync(image, cancellationToken);
+            return AdminResult.Conflict("The product could not be saved. No uploaded file was retained.");
+        }
     }
 
     public async Task<AdminResult> UpdateAsync(AdminProductInput input, CancellationToken cancellationToken = default)
@@ -141,16 +161,33 @@ public sealed class AdminProductService(ApplicationDbContext db, IOptions<StoreO
             product.Slug = await GenerateSlugAsync(input.Name, product.Id, cancellationToken);
         }
 
+        var oldKind = product.ImageKind;
+        var oldLocation = product.ImageLocation;
+        var image = await SelectImageAsync(input, oldKind, oldLocation, isCreate: false, cancellationToken);
+        if (image.Error is not null)
+        {
+            return AdminResult.Invalid(image.Error);
+        }
+
         Apply(product, input);
+        product.ImageKind = image.Kind;
+        product.ImageLocation = image.Location;
         db.Entry(product).Property(candidate => candidate.Version).OriginalValue = input.Version;
         try
         {
             await db.SaveChangesAsync(cancellationToken);
-            return AdminResult.Ok("Product updated.");
+            var cleaned = await CleanupOldImageAsync(product.Id, oldKind, oldLocation, image, cancellationToken);
+            return AdminResult.Ok(cleaned ? "Product updated." : "Product updated, but the previous managed image could not be cleaned up safely.");
         }
         catch (DbUpdateConcurrencyException)
         {
+            await CleanupNewImageAsync(image, cancellationToken);
             return AdminResult.Conflict("This product was changed by someone else. Reload and try again.");
+        }
+        catch (DbUpdateException)
+        {
+            await CleanupNewImageAsync(image, cancellationToken);
+            return AdminResult.Conflict("The product could not be updated. No new uploaded file was retained.");
         }
     }
 
@@ -191,9 +228,13 @@ public sealed class AdminProductService(ApplicationDbContext db, IOptions<StoreO
             return AdminResult.Blocked("This product is referenced by existing orders or carts, so it was deactivated instead of deleted.");
         }
 
+        var oldKind = product.ImageKind;
+        var oldLocation = product.ImageLocation;
         db.Products.Remove(product);
         await db.SaveChangesAsync(cancellationToken);
-        return AdminResult.Ok("Product deleted.");
+        var cleaned = await CleanupOldImageAsync(id, oldKind, oldLocation,
+            new ImageSelection(ProductImageKind.None, null, false, null), cancellationToken);
+        return AdminResult.Ok(cleaned ? "Product deleted." : "Product deleted, but its managed image could not be cleaned up safely.");
     }
 
     private static AdminResult? Validate(AdminProductInput input)
@@ -227,10 +268,17 @@ public sealed class AdminProductService(ApplicationDbContext db, IOptions<StoreO
         }
 
         if (!string.IsNullOrWhiteSpace(input.ImageUrl) &&
-            !(Uri.TryCreate(input.ImageUrl, UriKind.Absolute, out var uri) &&
-              uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo)))
+            (input.ImageUrl.Length > 2048 ||
+             !(Uri.TryCreate(input.ImageUrl, UriKind.Absolute, out var uri) &&
+               uri.Scheme == Uri.UriSchemeHttps && !string.IsNullOrWhiteSpace(uri.Host) && string.IsNullOrEmpty(uri.UserInfo))))
         {
             return AdminResult.Invalid("The image URL must be an absolute https address without embedded credentials.");
+        }
+
+        if (input.ImageUpload is not null &&
+            (input.RemoveImage || !string.IsNullOrWhiteSpace(input.ImageUrl)))
+        {
+            return AdminResult.Invalid("Choose only one image action: upload, external URL, or remove.");
         }
 
         if (input.StockQuantity is < 0 or > 1_000_000)
@@ -252,18 +300,65 @@ public sealed class AdminProductService(ApplicationDbContext db, IOptions<StoreO
         product.StockQuantity = input.StockQuantity;
         product.IsFeatured = input.IsFeatured;
         product.IsActive = input.IsActive;
+    }
 
-        if (string.IsNullOrWhiteSpace(input.ImageUrl))
+    private async Task<ImageSelection> SelectImageAsync(
+        AdminProductInput input,
+        ProductImageKind existingKind,
+        string? existingLocation,
+        bool isCreate,
+        CancellationToken cancellationToken)
+    {
+        if (input.ImageUpload is not null)
         {
-            product.ImageKind = ProductImageKind.None;
-            product.ImageLocation = null;
+            var saved = await images.ValidateAndSaveAsync(input.ImageUpload, cancellationToken);
+            return saved.Succeeded
+                ? new ImageSelection(ProductImageKind.Local, saved.RelativePath, true, null)
+                : new ImageSelection(existingKind, existingLocation, false, saved.Error ?? "The image could not be saved.");
         }
-        else
+
+        if (input.RemoveImage)
         {
-            product.ImageKind = ProductImageKind.ExternalUrl;
-            product.ImageLocation = input.ImageUrl.Trim();
+            return new ImageSelection(ProductImageKind.None, null, false, null);
+        }
+
+        if (!string.IsNullOrWhiteSpace(input.ImageUrl))
+        {
+            return new ImageSelection(ProductImageKind.ExternalUrl, input.ImageUrl.Trim(), false, null);
+        }
+
+        return isCreate
+            ? new ImageSelection(ProductImageKind.None, null, false, null)
+            : new ImageSelection(existingKind, existingLocation, false, null);
+    }
+
+    private async Task CleanupNewImageAsync(ImageSelection selection, CancellationToken cancellationToken)
+    {
+        if (selection.IsNewManaged && selection.Location is not null)
+        {
+            await images.TryDeleteAsync(selection.Location, cancellationToken);
         }
     }
+
+    private async Task<bool> CleanupOldImageAsync(
+        int productId,
+        ProductImageKind oldKind,
+        string? oldLocation,
+        ImageSelection replacement,
+        CancellationToken cancellationToken)
+    {
+        if (oldKind != ProductImageKind.Local || string.IsNullOrWhiteSpace(oldLocation) ||
+            string.Equals(oldLocation, replacement.Location, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        var stillReferenced = await db.Products.AsNoTracking()
+            .AnyAsync(product => product.Id != productId && product.ImageKind == ProductImageKind.Local && product.ImageLocation == oldLocation, cancellationToken);
+        return stillReferenced || await images.TryDeleteAsync(oldLocation, cancellationToken);
+    }
+
+    private sealed record ImageSelection(ProductImageKind Kind, string? Location, bool IsNewManaged, string? Error);
 
     private async Task<string> GenerateSlugAsync(string name, int? excludeId, CancellationToken cancellationToken)
     {

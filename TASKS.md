@@ -138,26 +138,26 @@
 
 ## Phase 7 — Checkout, fake payment, transaction, and stock
 
-- [ ] **T-CHECK-001** Implement authenticated checkout GET/POST with address/city/postal/country/phone, trusted summary, transient dummy card fields, and friendly server validation.
-- [ ] Generate a cryptographically random checkout token and bind lookup to the current user; retain anti-forgery as a separate control.
-- [ ] **T-PAY-001** Implement deterministic fake success/decline/invalid-expiry/CVV behavior with no network call.
-- [ ] **T-PAY-002** Keep PAN/CVV/expiry request-scoped; persist/log only allow-listed result metadata and clear secret model state before redisplay.
-- [ ] **T-ORDER-001** Implement successful order/items/snapshots/numbers/status/payment/stock/cart-clear/confirmation orchestration.
-- [ ] **T-ORDER-002** Implement one transaction containing attempt claim, trusted recalculation, conditional stock claims, order aggregate, sanitized payment result, cart clear, and attempt completion.
-- [ ] Handle fake decline by committing only sanitized failure state while preserving stock/cart.
-- [ ] Handle duplicate succeeded/failed/processing tokens and bounded stale fake-attempt recovery without creating a second order.
-- [ ] Handle order/invoice-number unique collisions with bounded regeneration inside safe retry scope.
-- [ ] Add injected rollback tests at every transaction boundary and verify no partial order/stock/cart mutation.
-- [ ] Add deterministic two-context/two-request tests for last-unit race and duplicate checkout.
-- [ ] Add database/log/model-state scans proving no prohibited card data.
-- [ ] Manually try success/decline, double-click, refresh/back, tampered totals, and stock change between GET/POST.
+- [x] **T-CHECK-001** Implement authenticated checkout GET/POST with address/city/postal/country/phone, trusted summary, transient dummy card fields, and friendly server validation.
+- [x] Generate a cryptographically random checkout token and bind lookup to the current user; retain anti-forgery as a separate control.
+- [x] **T-PAY-001** Implement deterministic fake success/decline/invalid-expiry/CVV behavior with no network call.
+- [x] **T-PAY-002** Keep PAN/CVV/expiry request-scoped; persist/log only allow-listed result metadata and clear secret model state before redisplay.
+- [ ] **T-ORDER-001** Implement successful order/items/snapshots/numbers/status/payment/stock/cart-clear/confirmation orchestration. _(Order/items/snapshots/numbers/status/stock/cart-clear/confirmation done; invoice-generation and order-email attempts land in Phase 9.)_
+- [x] **T-ORDER-002** Implement one transaction containing attempt claim, trusted recalculation, conditional stock claims, order aggregate, sanitized payment result, cart clear, and attempt completion.
+- [x] Handle fake decline by committing only sanitized failure state while preserving stock/cart.
+- [ ] Handle duplicate succeeded/failed/processing tokens and bounded stale fake-attempt recovery without creating a second order. _(Duplicate succeeded/failed/processing tokens handled idempotently; bounded stale-processing recovery still pending.)_
+- [x] Handle order/invoice-number unique collisions with bounded regeneration inside safe retry scope.
+- [ ] Add injected rollback tests at every transaction boundary and verify no partial order/stock/cart mutation. _(Targeted decline, stock-conflict, and race rollback tests added; exhaustive per-boundary injection is Phase 14.)_
+- [x] Add deterministic two-context/two-request tests for last-unit race and duplicate checkout.
+- [x] Add database/log/model-state scans proving no prohibited card data.
+- [ ] Manually try success/decline, double-click, refresh/back, tampered totals, and stock change between GET/POST. _(Success, decline, and declined-then-retry verified manually; remaining manual scenarios pending.)_
 
 ### Phase 7 Definition of Done
 
-- [ ] One user token produces at most one order and confirmation refresh is safe.
-- [ ] Concurrent checkout never oversells and multi-line failure rolls back every decrement.
-- [ ] Payment failure creates no order and leaves cart/stock unchanged.
-- [ ] No PAN/CVV/expiry is persisted or logged.
+- [x] One user token produces at most one order and confirmation refresh is safe.
+- [x] Concurrent checkout never oversells and multi-line failure rolls back every decrement.
+- [x] Payment failure creates no order and leaves cart/stock unchanged.
+- [x] No PAN/CVV/expiry is persisted or logged.
 
 ## Phase 8 — Customer orders and ownership
 

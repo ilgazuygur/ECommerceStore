@@ -4,8 +4,10 @@ using ECommerceStore.Web.Models.Identity;
 using ECommerceStore.Web.Services.Common;
 using ECommerceStore.Web.Services.Catalog;
 using ECommerceStore.Web.Services.Cart;
+using ECommerceStore.Web.Services.Checkout;
 using ECommerceStore.Web.Services.Email;
 using ECommerceStore.Web.Services.Orders;
+using ECommerceStore.Web.Services.Payments;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
@@ -97,6 +99,8 @@ builder.Services.AddSingleton<IEmailComposer, EmailComposer>();
 builder.Services.AddScoped<SmtpEmailTransport>();
 builder.Services.AddScoped<DevelopmentFileEmailTransport>();
 builder.Services.AddScoped<IEmailService, ResilientEmailService>();
+builder.Services.AddScoped<IPaymentService, FakePaymentService>();
+builder.Services.AddScoped<ICheckoutService, CheckoutService>();
 
 builder.Services.AddControllersWithViews(options =>
     options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()));

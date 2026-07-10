@@ -1,0 +1,63 @@
+@model CheckoutViewModel
+@{
+    ViewData["Title"] = "Checkout";
+    var cart = Model.Cart;
+}
+
+<section class="page-heading">
+    <div><span class="eyebrow">Secure demo checkout</span><h1>Checkout</h1><p>Review your order and pay with a demo card. No real payment is taken.</p></div>
+    <a class="text-link" asp-controller="Cart" asp-action="Index">Back to cart →</a>
+</section>
+
+<div class="cart-layout">
+    <section class="cart-lines" aria-label="Checkout details">
+        <form asp-controller="Checkout" asp-action="Index" method="post" class="account-panel checkout-form">
+            <input asp-for="Input.Token" type="hidden" />
+            <div asp-validation-summary="All" class="validation-summary"></div>
+
+            <h2>Shipping address</h2>
+            <div><label asp-for="Input.AddressLine1">Address line 1</label><input asp-for="Input.AddressLine1" class="form-control" autocomplete="address-line1" /><span asp-validation-for="Input.AddressLine1"></span></div>
+            <div><label asp-for="Input.AddressLine2">Address line 2 <small>(optional)</small></label><input asp-for="Input.AddressLine2" class="form-control" autocomplete="address-line2" /><span asp-validation-for="Input.AddressLine2"></span></div>
+            <div class="form-row">
+                <div><label asp-for="Input.City">City</label><input asp-for="Input.City" class="form-control" autocomplete="address-level2" /><span asp-validation-for="Input.City"></span></div>
+                <div><label asp-for="Input.PostalCode">Postal code</label><input asp-for="Input.PostalCode" class="form-control" autocomplete="postal-code" /><span asp-validation-for="Input.PostalCode"></span></div>
+            </div>
+            <div class="form-row">
+                <div><label asp-for="Input.Country">Country</label><input asp-for="Input.Country" class="form-control" autocomplete="country-name" /><span asp-validation-for="Input.Country"></span></div>
+                <div><label asp-for="Input.PhoneNumber">Phone number</label><input asp-for="Input.PhoneNumber" class="form-control" autocomplete="tel" /><span asp-validation-for="Input.PhoneNumber"></span></div>
+            </div>
+
+            <h2>Payment</h2>
+            <p class="fine-print">Demo cards — success: <code>4242 4242 4242 4242</code>, decline: <code>4000 0000 0000 0002</code>, any future expiry and any 3-digit code.</p>
+            <div><label asp-for="Input.CardHolder"></label><input asp-for="Input.CardHolder" class="form-control" autocomplete="cc-name" /><span asp-validation-for="Input.CardHolder"></span></div>
+            <div><label asp-for="Input.CardNumber"></label><input asp-for="Input.CardNumber" class="form-control" inputmode="numeric" autocomplete="cc-number" /><span asp-validation-for="Input.CardNumber"></span></div>
+            <div class="form-row form-row-3">
+                <div><label asp-for="Input.ExpiryMonth">Month (MM)</label><input asp-for="Input.ExpiryMonth" class="form-control" inputmode="numeric" min="1" max="12" autocomplete="cc-exp-month" /><span asp-validation-for="Input.ExpiryMonth"></span></div>
+                <div><label asp-for="Input.ExpiryYear">Year (YY)</label><input asp-for="Input.ExpiryYear" class="form-control" inputmode="numeric" min="0" max="99" autocomplete="cc-exp-year" /><span asp-validation-for="Input.ExpiryYear"></span></div>
+                <div><label asp-for="Input.SecurityCode"></label><input asp-for="Input.SecurityCode" class="form-control" inputmode="numeric" autocomplete="off" /><span asp-validation-for="Input.SecurityCode"></span></div>
+            </div>
+
+            <button class="button button-primary button-block" type="submit">Pay @cart.Totals.GrandTotal.ToString("C")</button>
+        </form>
+    </section>
+
+    <aside class="order-summary">
+        <span class="eyebrow">Summary</span><h2>Order total</h2>
+        <ul class="checkout-lines">
+            @foreach (var line in cart.Lines)
+            {
+                <li><span>@line.Quantity × @line.Name</span><span>@line.LineTotal.ToString("C")</span></li>
+            }
+        </ul>
+        <dl>
+            <div><dt>List subtotal</dt><dd>@cart.Totals.ListPriceSubtotal.ToString("C")</dd></div>
+            <div><dt>Discount</dt><dd>−@cart.Totals.DiscountTotal.ToString("C")</dd></div>
+            <div><dt>Merchandise</dt><dd>@cart.Totals.MerchandiseTotal.ToString("C")</dd></div>
+            <div><dt>Shipping</dt><dd>@cart.Totals.Shipping.ToString("C")</dd></div>
+            <div class="summary-total"><dt>Total</dt><dd>@cart.Totals.GrandTotal.ToString("C")</dd></div>
+        </dl>
+        <p class="fine-print">Prices are tax-inclusive. Flat @cart.Totals.Shipping.ToString("C") shipping.</p>
+    </aside>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

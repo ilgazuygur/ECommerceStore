@@ -1,0 +1,56 @@
+@model OrderConfirmationViewModel
+@{
+    ViewData["Title"] = $"Order {Model.OrderNumber}";
+}
+
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">Thank you</span>
+        <h1>Order confirmed</h1>
+        <p>Order <strong>@Model.OrderNumber</strong> · placed @Model.CreatedAtUtc.ToString("dd MMM yyyy HH:mm") UTC</p>
+    </div>
+    <a class="text-link" asp-controller="Catalog" asp-action="Index">Continue shopping →</a>
+</section>
+
+<div class="cart-layout">
+    <section class="cart-lines" aria-label="Order summary">
+        <div class="order-status-row">
+            <span class="status-pill status-paid">Payment: @Model.PaymentStatus</span>
+            <span class="status-pill">Order: @Model.OrderStatus</span>
+        </div>
+
+        <h2>Items</h2>
+        @foreach (var line in Model.Lines)
+        {
+            <article class="cart-line order-line">
+                <div class="cart-line-copy"><span class="eyebrow">@line.CategoryName</span><h3>@line.ProductName</h3><span>@line.Quantity × @line.PaidUnitPrice.ToString("C")</span></div>
+                <div class="cart-line-total"><strong>@line.LineTotal.ToString("C")</strong></div>
+            </article>
+        }
+
+        <h2 class="mt-4">Shipping to</h2>
+        <address class="order-address">
+            @Model.CustomerName<br />
+            @Model.AddressLine1<br />
+            @if (!string.IsNullOrWhiteSpace(Model.AddressLine2)) { @Model.AddressLine2<br /> }
+            @Model.City, @Model.PostalCode<br />
+            @Model.Country<br />
+            @Model.PhoneNumber
+        </address>
+        @if (Model.CardLast4 is not null)
+        {
+            <p class="fine-print">Paid with @Model.CardBrand ending @Model.CardLast4 (demo gateway).</p>
+        }
+    </section>
+
+    <aside class="order-summary">
+        <span class="eyebrow">Total</span><h2>Receipt</h2>
+        <dl>
+            <div><dt>List subtotal</dt><dd>@Model.Subtotal.ToString("C")</dd></div>
+            <div><dt>Discount</dt><dd>−@Model.Discount.ToString("C")</dd></div>
+            <div><dt>Shipping</dt><dd>@Model.Shipping.ToString("C")</dd></div>
+            <div class="summary-total"><dt>Grand total</dt><dd>@Model.GrandTotal.ToString("C")</dd></div>
+        </dl>
+        <p class="fine-print">Invoice @Model.InvoiceNumber will be available to download from your order details.</p>
+    </aside>
+</div>

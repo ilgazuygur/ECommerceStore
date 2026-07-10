@@ -9,7 +9,7 @@
         <h1>Order confirmed</h1>
         <p>Order <strong>@Model.OrderNumber</strong> · placed @Model.CreatedAtUtc.ToString("dd MMM yyyy HH:mm") UTC</p>
     </div>
-    <a class="text-link" asp-controller="Catalog" asp-action="Index">Continue shopping →</a>
+    <a class="text-link" asp-controller="Orders" asp-action="Index">My orders →</a>
 </section>
 
 <div class="cart-layout">

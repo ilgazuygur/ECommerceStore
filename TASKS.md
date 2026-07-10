@@ -161,17 +161,17 @@
 
 ## Phase 8 — Customer orders and ownership
 
-- [ ] **T-ORDER-003** Implement owner-only paginated My Orders and details with every specified list/detail field sourced from snapshots.
-- [ ] **T-ORDER-004** Implement service/query methods that require both resource identifier and current user ID for confirmation, details, and invoice models.
-- [ ] Return consistent 404 for missing/non-owned customer order resources; do not reveal existence.
-- [ ] Ensure later profile/product/category/price/deletion changes do not alter displayed history.
-- [ ] Add customer A/customer B/anonymous tests against route IDs and public order numbers.
-- [ ] Complete My Orders/detail/unauthorized URL manual steps.
+- [x] **T-ORDER-003** Implement owner-only paginated My Orders and details with every specified list/detail field sourced from snapshots. _(List/detail fields and pagination done; the invoice download action is added in Phase 9.)_
+- [x] **T-ORDER-004** Implement service/query methods that require both resource identifier and current user ID for confirmation, details, and invoice models. _(Confirmation and details enforce owner scoping; invoice model added in Phase 9.)_
+- [x] Return consistent 404 for missing/non-owned customer order resources; do not reveal existence.
+- [x] Ensure later profile/product/category/price/deletion changes do not alter displayed history.
+- [x] Add customer A/customer B/anonymous tests against route IDs and public order numbers.
+- [x] Complete My Orders/detail/unauthorized URL manual steps.
 
 ### Phase 8 Definition of Done
 
-- [ ] Every order list/detail field is present and immutable.
-- [ ] Ownership is proven at service/query and HTTP layers, not just hidden UI.
+- [x] Every order list/detail field is present and immutable.
+- [x] Ownership is proven at service/query and HTTP layers, not just hidden UI.
 
 ## Phase 9 — PDF and order email
 

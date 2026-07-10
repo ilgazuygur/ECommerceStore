@@ -1,0 +1,72 @@
+@model OrderDetailsViewModel
+@{
+    ViewData["Title"] = $"Order {Model.OrderNumber}";
+}
+
+<section class="page-heading">
+    <div>
+        <span class="eyebrow">Order details</span>
+        <h1>@Model.OrderNumber</h1>
+        <p>Placed @Model.CreatedAtUtc.ToString("dd MMM yyyy HH:mm") UTC · Invoice @Model.InvoiceNumber</p>
+    </div>
+    <a class="text-link" asp-action="Index">← All orders</a>
+</section>
+
+<div class="cart-layout">
+    <section class="cart-lines" aria-label="Order items">
+        <div class="order-status-row">
+            <span class="status-pill @(Model.PaymentStatus == "Succeeded" ? "status-paid" : "")">Payment: @Model.PaymentStatus</span>
+            <span class="status-pill">Order: @Model.OrderStatus</span>
+        </div>
+
+        <div class="table-scroll">
+            <table class="data-table">
+                <caption class="visually-hidden">Items in order @Model.OrderNumber</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Item</th>
+                        <th scope="col">Qty</th>
+                        <th scope="col">Unit price</th>
+                        <th scope="col">Line total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in Model.Lines)
+                    {
+                        <tr>
+                            <th scope="row">@line.ProductName<span class="row-sub">@line.CategoryName</span></th>
+                            <td>@line.Quantity</td>
+                            <td>@line.PaidUnitPrice.ToString("C")@if (line.IsDiscounted) { <del>@line.ListUnitPrice.ToString("C")</del> }</td>
+                            <td>@line.LineTotal.ToString("C")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <h2 class="mt-4">Shipping to</h2>
+        <address class="order-address">
+            @Model.CustomerName<br />
+            @Model.AddressLine1<br />
+            @if (!string.IsNullOrWhiteSpace(Model.AddressLine2)) { @Model.AddressLine2<br /> }
+            @Model.City, @Model.PostalCode<br />
+            @Model.Country<br />
+            @Model.PhoneNumber
+        </address>
+        @if (Model.CardLast4 is not null)
+        {
+            <p class="fine-print">Paid with @Model.CardBrand ending @Model.CardLast4 (demo gateway).</p>
+        }
+    </section>
+
+    <aside class="order-summary">
+        <span class="eyebrow">Total</span><h2>Summary</h2>
+        <dl>
+            <div><dt>List subtotal</dt><dd>@Model.Subtotal.ToString("C")</dd></div>
+            <div><dt>Discount</dt><dd>−@Model.Discount.ToString("C")</dd></div>
+            <div><dt>Shipping</dt><dd>@Model.Shipping.ToString("C")</dd></div>
+            <div class="summary-total"><dt>Grand total</dt><dd>@Model.GrandTotal.ToString("C")</dd></div>
+        </dl>
+        <p class="fine-print">Invoice @Model.InvoiceNumber.</p>
+    </aside>
+</div>

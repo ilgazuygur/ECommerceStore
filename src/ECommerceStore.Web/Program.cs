@@ -91,6 +91,7 @@ builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddSingleton<IOrderNumberGenerator, OrderNumberGenerator>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IProductQueryService, ProductQueryService>();
+builder.Services.AddScoped<IOrderQueryService, OrderQueryService>();
 builder.Services.AddScoped<ICartCalculator, CartCalculator>();
 builder.Services.AddScoped<IAnonymousCartStore, AnonymousCartStore>();
 builder.Services.AddScoped<ICartService, CartService>();

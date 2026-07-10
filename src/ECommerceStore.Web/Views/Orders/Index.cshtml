@@ -1,0 +1,62 @@
+@model OrderListViewModel
+@{
+    ViewData["Title"] = "My orders";
+}
+
+<section class="page-heading">
+    <div><span class="eyebrow">Your account</span><h1>My orders</h1><p>@Model.TotalCount order@(Model.TotalCount == 1 ? "" : "s") placed with this account.</p></div>
+    <a class="text-link" asp-controller="Catalog" asp-action="Index">Continue shopping →</a>
+</section>
+
+@if (Model.IsEmpty)
+{
+    <partial name="_EmptyState" model='"You have not placed any orders yet."' />
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table">
+            <caption class="visually-hidden">Your orders, newest first</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Order</th>
+                    <th scope="col">Date</th>
+                    <th scope="col">Items</th>
+                    <th scope="col">Total</th>
+                    <th scope="col">Payment</th>
+                    <th scope="col">Status</th>
+                    <th scope="col"><span class="visually-hidden">Actions</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in Model.Orders)
+                {
+                    <tr>
+                        <th scope="row"><a class="text-link" asp-action="Details" asp-route-orderNumber="@order.OrderNumber">@order.OrderNumber</a></th>
+                        <td>@order.CreatedAtUtc.ToString("dd MMM yyyy")</td>
+                        <td>@order.ItemCount</td>
+                        <td>@order.GrandTotal.ToString("C")</td>
+                        <td><span class="status-pill @(order.PaymentStatus == "Succeeded" ? "status-paid" : "")">@order.PaymentStatus</span></td>
+                        <td><span class="status-pill">@order.OrderStatus</span></td>
+                        <td><a class="button button-secondary button-small" asp-action="Details" asp-route-orderNumber="@order.OrderNumber">View</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (Model.TotalPages > 1)
+    {
+        <nav class="pagination-wrap" aria-label="Order pages">
+            <ul class="pagination">
+                <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
+                    <a class="page-link" asp-action="Index" asp-route-page="@(Model.Page - 1)" tabindex="@(Model.HasPreviousPage ? "0" : "-1")">Previous</a>
+                </li>
+                <li class="page-item disabled"><span class="page-link">Page @Model.Page of @Model.TotalPages</span></li>
+                <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
+                    <a class="page-link" asp-action="Index" asp-route-page="@(Model.Page + 1)" tabindex="@(Model.HasNextPage ? "0" : "-1")">Next</a>
+                </li>
+            </ul>
+        </nav>
+    }
+}

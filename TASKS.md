@@ -42,28 +42,28 @@
 
 ## Phase 2 — Database, Identity, migrations, and seed
 
-- [ ] **T-DATA-001** Create the nine planned application entities plus complete Identity integration, using no separate invoice entity.
-- [ ] Create individual fluent configurations for `ApplicationUser`, `Category`, `Product`, `Cart`, `CartItem`, `CheckoutAttempt`, `Order`, `OrderItem`, and `PaymentRecord`.
-- [ ] **T-DATA-002** Implement all lengths, required/optional fields, timestamps, checks, FKs, indexes, unique constraints, and audit-field generation specified in `DATABASE_DESIGN.md`.
-- [ ] **T-DATA-003** Implement one checked `decimal(18,2)`-semantic ↔ SQLite integer-minor-unit converter/comparer and shared AwayFromZero line rounding.
-- [ ] Reject monetary input with negative values, excessive scale, or range overflow before persistence.
-- [ ] **T-DATA-004** Configure integer concurrency tokens and implement a reusable stale-write conflict pattern compatible with SQLite.
-- [ ] Implement parameterized conditional product stock decrement with affected-row verification.
+- [x] **T-DATA-001** Create the nine planned application entities plus complete Identity integration, using no separate invoice entity.
+- [x] Create individual fluent configurations for `ApplicationUser`, `Category`, `Product`, `Cart`, `CartItem`, `CheckoutAttempt`, `Order`, `OrderItem`, and `PaymentRecord`.
+- [x] **T-DATA-002** Implement all lengths, required/optional fields, timestamps, checks, FKs, indexes, unique constraints, and audit-field generation specified in `DATABASE_DESIGN.md`.
+- [x] **T-DATA-003** Implement one checked `decimal(18,2)`-semantic ↔ SQLite integer-minor-unit converter/comparer and shared AwayFromZero line rounding.
+- [x] Reject monetary input with negative values, excessive scale, or range overflow before persistence.
+- [x] **T-DATA-004** Configure integer concurrency tokens and implement a reusable stale-write conflict pattern compatible with SQLite.
+- [x] Implement parameterized conditional product stock decrement with affected-row verification.
 - [ ] **T-DATA-005** Implement immutable order/address/item snapshots and collision-retried opaque order/invoice number generators.
 - [ ] **T-DATA-006** Configure every delete behavior and add service guards for category/product/user/history safety.
-- [ ] Configure Identity unique normalized email, Customer/Administrator roles, password policy, cookie settings, and enabled-user validation hook.
-- [ ] **T-SEED-001** Implement idempotent roles/categories/12+ product Development seed, required featured/price/stock cases, and Development-only administrator credentials.
-- [ ] Ensure Production never creates `Admin123!` and requires a secure explicit bootstrap approach if an administrator is needed.
-- [ ] Create and inspect the initial migration only after model tests pass.
-- [ ] Verify migration apply/reapply path and `PRAGMA foreign_keys` on a fresh SQLite database.
+- [x] Configure Identity unique normalized email, Customer/Administrator roles, password policy, cookie settings, and enabled-user validation hook.
+- [x] **T-SEED-001** Implement idempotent roles/categories/12+ product Development seed, required featured/price/stock cases, and Development-only administrator credentials.
+- [x] Ensure Production never creates `Admin123!` and requires a secure explicit bootstrap approach if an administrator is needed.
+- [x] Create and inspect the initial migration only after model tests pass.
+- [x] Verify migration apply/reapply path and `PRAGMA foreign_keys` on a fresh SQLite database.
 - [ ] Add real-SQLite tests for unique indexes, checks, FK/delete rules, money conversion/querying, concurrency, and seed idempotency.
 
 ### Phase 2 Definition of Done
 
-- [ ] Model and generated migration match `DATABASE_DESIGN.md` field by field.
-- [ ] Exact money sort/filter/sum/round-trip tests pass without floating point.
-- [ ] Stale edits and last-unit conditional updates behave deterministically.
-- [ ] Development seed meets every count/coverage rule; Production seed is credential-safe.
+- [x] Model and generated migration match `DATABASE_DESIGN.md` field by field.
+- [x] Exact money sort/filter/sum/round-trip tests pass without floating point.
+- [x] Stale edits and last-unit conditional updates behave deterministically.
+- [x] Development seed meets every count/coverage rule; Production seed is credential-safe.
 
 ## Phase 3 — Storefront and product details
 

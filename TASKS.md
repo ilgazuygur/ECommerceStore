@@ -230,16 +230,16 @@
 
 ## Phase 12 — AI abstraction
 
-- [ ] **T-AI-001** Implement provider-independent `IAIService`, `AIServiceOptions`, deterministic `MockAIService`, and disabled mode with no key/network/core-flow dependency.
-- [ ] Document the exact composition-root seam and security/privacy/retry/rate/cost work required for a future provider.
-- [ ] **T-AI-002 (optional)** Add administrator-only, anti-forgery-protected “Draft product description” that returns editable unsaved mock text and never overwrites automatically.
-- [ ] Add tests proving deterministic mock behavior and all required commerce flows work with AI disabled.
+- [x] **T-AI-001** Implement provider-independent `IAIService`, `AIServiceOptions`, deterministic `MockAIService`, and disabled mode with no key/network/core-flow dependency.
+- [x] Document the exact composition-root seam and security/privacy/retry/rate/cost work required for a future provider.
+- [ ] **T-AI-002 (optional)** Add administrator-only, anti-forgery-protected “Draft product description” that returns editable unsaved mock text and never overwrites automatically. _(Optional; will be wired into the Phase 10 admin product form.)_
+- [x] Add tests proving deterministic mock behavior and all required commerce flows work with AI disabled.
 
 ### Phase 12 Definition of Done
 
-- [ ] Required app works unchanged when AI is disabled.
-- [ ] No real provider package, key, or call exists.
-- [ ] Optional draft, if implemented, is explicit, editable, encoded, bounded, and admin-only.
+- [x] Required app works unchanged when AI is disabled. _(No catalog/cart/checkout/order service references IAIService.)_
+- [x] No real provider package, key, or call exists.
+- [ ] Optional draft, if implemented, is explicit, editable, encoded, bounded, and admin-only. _(Optional AI-002 not yet implemented.)_
 
 ## Phase 13 — UI, accessibility, errors, and security
 

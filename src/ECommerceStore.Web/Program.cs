@@ -1,6 +1,7 @@
 using ECommerceStore.Web.Data;
 using ECommerceStore.Web.Data.Seed;
 using ECommerceStore.Web.Models.Identity;
+using ECommerceStore.Web.Services.AI;
 using ECommerceStore.Web.Services.Common;
 using ECommerceStore.Web.Services.Catalog;
 using ECommerceStore.Web.Services.Cart;
@@ -105,6 +106,7 @@ builder.Services.AddScoped<IPaymentService, FakePaymentService>();
 builder.Services.AddScoped<ICheckoutService, CheckoutService>();
 builder.Services.AddSingleton<IInvoicePdfService, InvoicePdfService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddSingleton<IAIService, MockAIService>();
 builder.Services.AddScoped<IOrderConfirmationDispatcher, OrderConfirmationDispatcher>();
 
 builder.Services.AddControllersWithViews(options =>

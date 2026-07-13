@@ -9,6 +9,7 @@ assumed.
 - **Host:** macOS (Apple Silicon), .NET SDK 8.0.422
 - **Repository branch:** `feat/shopping-assistant-integration`
 - **Local run URL used for verification:** `http://127.0.0.1:5187`
+- **GitHub Actions PR run:** [29262999207](https://github.com/ilgazuygur/ECommerceStore/actions/runs/29262999207)
 
 ---
 
@@ -36,6 +37,21 @@ Admin-service tests including upload persistence/compensation: passed.
 The suite uses real SQLite (in-memory and temporary file) and
 `WebApplicationFactory`; EF Core's in-memory provider is not used to assert
 transaction/concurrency behavior.
+
+Cross-platform Release results from the final PR workflow:
+
+| Runner | Passed | Failed | Skipped | Result |
+|--------|--------|--------|---------|--------|
+| Ubuntu | 161 | 0 | 0 | **Succeeded** |
+| macOS | 161 | 0 | 0 | **Succeeded** |
+| Windows | 161 | 0 | 0 | **Succeeded** |
+| Ubuntu migration/model job | — | — | — | **Succeeded** |
+
+The first workflow revision used `runner.temp` before a runner existed and was
+rejected during workflow validation. After scoping that context to its step, the
+first Windows execution exposed SQLite test files being deleted before pooled
+connections were fully released. The tests now dispose contexts in scope order,
+clear SQLite pools, and pass unchanged on all three operating systems.
 
 ## 3. Migration
 
@@ -186,9 +202,9 @@ was empty after correcting the validation partial's jQuery load order.
 
 ## 14. Checks not performed
 
-- **Windows execution.** All builds/tests/migrations/runtime checks above were
-  performed on macOS (Apple Silicon). The Windows commands in the README are
-  provided for portability but were not executed in this environment.
+- **Manual Windows browser/runtime execution.** Windows Release build and all 161
+  automated tests passed in GitHub Actions; interactive browser checks were
+  performed on macOS.
 - **Third-party automated accessibility scan** (axe/Lighthouse) — see §9.
 - **Manual browser click-through of the full purchase path** — covered by the
   automated test suite instead (see §5).

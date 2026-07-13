@@ -208,10 +208,9 @@ All filesystem access uses `Path.Combine` and `IWebHostEnvironment`, so paths ar
 portable across macOS and Windows. There is no LocalDB, Bash, or PowerShell
 dependency in application code.
 
-> Cross-platform note: the automated and manual verification recorded in
-> [`docs/FINAL_VERIFICATION.md`](docs/FINAL_VERIFICATION.md) was performed on
-> macOS (Apple Silicon). The Windows commands above are provided for portability;
-> Windows execution has not been performed in this environment.
+> Cross-platform note: manual browser/runtime verification was performed on
+> macOS (Apple Silicon). GitHub Actions performs the full Release build and all
+> tests on Ubuntu, macOS, and Windows for pull requests and supported pushes.
 
 ---
 
@@ -489,7 +488,8 @@ Run the full suite:
 dotnet test --configuration Release
 ```
 
-**Latest result (macOS Apple Silicon): 161 passed, 0 failed, 0 skipped.**
+**Latest result:** 161 passed, 0 failed, 0 skipped locally on macOS and on each
+GitHub Actions runner: Ubuntu, macOS, and Windows.
 
 See [`docs/FINAL_VERIFICATION.md`](docs/FINAL_VERIFICATION.md) for the full
 build/migration/startup/runtime verification record.
@@ -527,8 +527,8 @@ build/migration/startup/runtime verification record.
   history and does not perform currency conversion.
 - Docker is **not** required and is not provided; the local path is the supported
   workflow.
-- Windows execution was not performed in this environment (see the cross-platform
-  note); the code is written to be portable.
+- Manual Windows browser/runtime verification was not performed. Windows Release
+  build and all 161 tests pass in GitHub Actions.
 
 ---
 

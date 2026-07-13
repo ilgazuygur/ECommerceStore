@@ -40,9 +40,37 @@ public sealed class ProductAssistantToolTests
         Assert.All(wildcard.Products.Concat(inStock.Products).Concat(range.Products), product => Assert.NotEqual("Hidden Charger", product.Name));
     }
 
+    [Fact]
+    public async Task Alternative_tool_returns_only_live_in_stock_same_category_candidates()
+    {
+        await using var database = await SqliteTestDatabase.CreateAsync();
+        await using var db = database.CreateContext();
+        var electronics = new Category { Name = "Electronics", NormalizedName = "ELECTRONICS", Slug = "electronics" };
+        var fitness = new Category { Name = "Fitness", NormalizedName = "FITNESS", Slug = "fitness" };
+        var target = Product(electronics, "Target", "target", 100m, 5);
+        var cheaperProduct = Product(electronics, "Cheaper", "cheaper", 60m, 3);
+        var pricierProduct = Product(electronics, "Pricier", "pricier", 120m, 4);
+        var soldOut = Product(electronics, "Sold Out", "sold-out-alternative", 50m, 0);
+        var otherCategory = Product(fitness, "Other Category", "other-category", 20m, 8);
+        db.AddRange(electronics, fitness, target,
+            cheaperProduct, pricierProduct, soldOut, otherCategory);
+        await db.SaveChangesAsync();
+        var service = Create(db);
+        var candidateIds = string.Join(",", new[] { cheaperProduct.Id, pricierProduct.Id, soldOut.Id, otherCategory.Id });
+
+        var alternatives = await service.ExecuteAsync("GetProductAlternatives",
+            Json($$"""{"productId":{{target.Id}},"candidateProductIds":[{{candidateIds}}],"cheaperOnly":false,"limit":4}"""));
+        var cheaper = await service.ExecuteAsync("GetProductAlternatives",
+            Json($$"""{"productId":{{target.Id}},"candidateProductIds":[{{candidateIds}}],"cheaperOnly":true,"limit":4}"""));
+
+        Assert.Equal(["Cheaper", "Pricier"], alternatives.Products.Select(product => product.Name));
+        Assert.Equal("Cheaper", Assert.Single(cheaper.Products).Name);
+    }
+
     [Theory]
     [InlineData("SearchProducts", "{\"keyword\":\"x\",\"unknown\":true}")]
     [InlineData("GetProductDetails", "{\"productId\":0}")]
+    [InlineData("GetProductAlternatives", "{\"productId\":0}")]
     [InlineData("GetProductsByCategory", "{\"category\":\"\"}")]
     [InlineData("GetProductsWithinPriceRange", "{\"minimumPrice\":20,\"maximumPrice\":10}")]
     [InlineData("UnregisteredTool", "{}")]

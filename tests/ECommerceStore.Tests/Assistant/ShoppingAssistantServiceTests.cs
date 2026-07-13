@@ -179,6 +179,277 @@ public sealed class ShoppingAssistantServiceTests
     }
 
     [Fact]
+    public async Task Meaningless_prompt_bypasses_provider_but_compatibility_normalized_short_term_reaches_it()
+    {
+        await using var database = await SqliteFileTestDatabase.CreateAsync();
+        var setup = await SeedAsync(database);
+        await using var context = database.CreateContext();
+        var provider = new CountingProvider("short-term answer");
+        var service = CreateService(context, provider);
+
+        var meaningless = await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "\u00a0f\u2003");
+        var politeNoise = await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "f please");
+        var shortTerm = await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "\u3000ＴＶ\u00a0");
+
+        Assert.Equal(AssistantSendStatus.Completed, meaningless.Status);
+        Assert.Contains("product, category, budget", meaningless.Message!.Content);
+        Assert.Empty(meaningless.Message.Products);
+        Assert.Equal(AssistantSendStatus.Completed, politeNoise.Status);
+        Assert.Contains("product, category, budget", politeNoise.Message!.Content);
+        Assert.Empty(politeNoise.Message.Products);
+        Assert.Equal(AssistantSendStatus.Completed, shortTerm.Status);
+        Assert.Equal("short-term answer", shortTerm.Message!.Content);
+        Assert.Equal(1, provider.CallCount);
+        Assert.Equal(
+            ["f", "f please", "TV"],
+            await context.ChatMessages.AsNoTracking()
+                .Where(message => message.Role == ChatMessageRole.User)
+                .OrderBy(message => message.Sequence)
+                .Select(message => message.Content)
+                .ToListAsync());
+    }
+
+    [Fact]
+    public async Task Recommendation_followups_use_current_catalogue_price_and_stock_and_only_grounded_cards()
+    {
+        await using var database = await SqliteFileTestDatabase.CreateAsync();
+        var setup = await SeedConversationCatalogAsync(database);
+        await using var context = database.CreateContext();
+        var service = CreateService(context, new MockAssistantAiClient());
+
+        var general = await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "what should i buy");
+        Assert.Equal(AssistantSendStatus.Completed, general.Status);
+        Assert.Equal(3, general.Message!.Products.Count);
+        Assert.All(general.Message.Products, card => Assert.True(card.StockQuantity > 0));
+        Assert.Contains("selected deterministically by lowest current effective price", general.Message.Content);
+        Assert.DoesNotContain("couldn’t find", general.Message.Content, StringComparison.OrdinalIgnoreCase);
+
+        var recommendation = await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "What should I buy in electronics?");
+
+        Assert.Equal(AssistantSendStatus.Completed, recommendation.Status);
+        Assert.Equal(
+            [setup.PocketPowerBankId, setup.LumaDeskLampId, setup.AuroraHeadphonesId],
+            recommendation.Message!.Products.Select(card => card.ProductId!.Value).ToArray());
+        Assert.DoesNotContain(recommendation.Message.Products, card => card.Name == "Retired Camera");
+        Assert.Contains("current electronics catalogue options", recommendation.Message.Content);
+        Assert.Contains("out-of-stock items are shown only for comparison", recommendation.Message.Content);
+
+        await using (var update = database.CreateContext())
+        {
+            var pocket = await update.Products.SingleAsync(product => product.Id == setup.PocketPowerBankId);
+            pocket.DiscountPrice = 25m;
+            pocket.StockQuantity = 0;
+            var lamp = await update.Products.SingleAsync(product => product.Id == setup.LumaDeskLampId);
+            lamp.DiscountPrice = 55m;
+            lamp.StockQuantity = 0;
+            var headphones = await update.Products.SingleAsync(product => product.Id == setup.AuroraHeadphonesId);
+            headphones.DiscountPrice = 65m;
+            headphones.StockQuantity = 7;
+            await update.SaveChangesAsync();
+        }
+
+        var current = new Dictionary<int, (decimal Price, int Stock)>
+        {
+            [setup.PocketPowerBankId] = (25m, 0),
+            [setup.LumaDeskLampId] = (55m, 0),
+            [setup.AuroraHeadphonesId] = (65m, 7)
+        };
+
+        var best = await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "Which one is best?");
+        Assert.Contains("isn’t a single objective best", best.Message!.Content);
+        Assert.Contains("Aurora Wireless Headphones", best.Message.Content);
+        Assert.Contains("65.00", best.Message.Content);
+        AssertLiveCards(best.Message, current);
+
+        var cheapest = await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "Which is cheapest?");
+        Assert.Contains("Pocket Power Bank", cheapest.Message!.Content);
+        Assert.Contains("25.00", cheapest.Message.Content);
+        Assert.Contains("out of stock", cheapest.Message.Content);
+        Assert.Contains("lowest-priced in-stock option is Aurora Wireless Headphones at 65.00", cheapest.Message.Content);
+        AssertLiveCards(cheapest.Message, current);
+
+        var stock = await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "Are those still in stock?");
+        Assert.Contains("Aurora Wireless Headphones is in stock (7 available)", stock.Message!.Content);
+        Assert.Contains("Pocket Power Bank is out of stock", stock.Message.Content);
+        Assert.Contains("Luma Smart Desk Lamp is out of stock", stock.Message.Content);
+        AssertLiveCards(stock.Message, current);
+
+        var comparison = await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "Compare the first two");
+        Assert.Equal(
+            [setup.PocketPowerBankId, setup.LumaDeskLampId],
+            comparison.Message!.Products.Select(card => card.ProductId!.Value).ToArray());
+        Assert.Contains("Pocket Power Bank — 25.00, out of stock", comparison.Message.Content);
+        Assert.Contains("Luma Smart Desk Lamp — 55.00, out of stock", comparison.Message.Content);
+
+        var ordinal = await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "How is the second one?");
+        var ordinalCard = Assert.Single(ordinal.Message!.Products);
+        Assert.Equal(setup.LumaDeskLampId, ordinalCard.ProductId);
+        Assert.Equal(55m, ordinalCard.Price);
+        Assert.Equal(0, ordinalCard.StockQuantity);
+        Assert.Contains("Luma Smart Desk Lamp is currently 55.00", ordinal.Message.Content);
+        Assert.Contains("out of stock", ordinal.Message.Content);
+    }
+
+    [Fact]
+    public async Task Inactive_references_are_not_grounded_and_a_no_card_reply_clears_stale_scope()
+    {
+        await using var database = await SqliteFileTestDatabase.CreateAsync();
+        var setup = await SeedConversationCatalogAsync(database);
+        await using var context = database.CreateContext();
+        var service = CreateService(context, new MockAssistantAiClient());
+        var recommendation = await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "Show electronics");
+
+        await using (var update = database.CreateContext())
+        {
+            await update.Products
+                .Where(product => product.Id == setup.PocketPowerBankId || product.Id == setup.LumaDeskLampId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(product => product.IsActive, false));
+        }
+
+        var reloaded = await service.GetConversationAsync(setup.UserId, setup.ConversationId);
+        var historicCards = reloaded!.Messages.Single(message => message.Id == recommendation.Message!.Id).Products;
+        Assert.True(historicCards.Single(card => card.Name == "Pocket Power Bank").IsUnavailable);
+        Assert.True(historicCards.Single(card => card.Name == "Luma Smart Desk Lamp").IsUnavailable);
+        Assert.False(historicCards.Single(card => card.Name == "Aurora Wireless Headphones").IsUnavailable);
+
+        var unavailableComparison = await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "Compare the first two");
+        Assert.Equal(AssistantSendStatus.Completed, unavailableComparison.Status);
+        Assert.Contains("no longer available", unavailableComparison.Message!.Content);
+        Assert.Empty(unavailableComparison.Message.Products);
+
+        var staleFollowup = await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "Which one is best?");
+        Assert.Contains("don’t have a recent product set", staleFollowup.Message!.Content);
+        Assert.Empty(staleFollowup.Message.Products);
+        Assert.Empty(await context.ChatMessageProducts.AsNoTracking()
+            .Where(reference => reference.MessageId == unavailableComparison.Message.Id ||
+                                reference.MessageId == staleFollowup.Message.Id)
+            .ToListAsync());
+    }
+
+    [Fact]
+    public async Task Explicit_category_search_replaces_reference_scope_before_comparison()
+    {
+        await using var database = await SqliteFileTestDatabase.CreateAsync();
+        var setup = await SeedConversationCatalogAsync(database);
+        await using var context = database.CreateContext();
+        var service = CreateService(context, new MockAssistantAiClient());
+        await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "What should I buy in electronics?");
+
+        var fitness = await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "Show fitness products");
+        Assert.Equal(
+            [setup.TerraBottleId, setup.ResistanceBandsId, setup.YogaMatId],
+            fitness.Message!.Products.Select(card => card.ProductId!.Value).ToArray());
+
+        await using (var update = database.CreateContext())
+        {
+            var bottle = await update.Products.SingleAsync(product => product.Id == setup.TerraBottleId);
+            bottle.DiscountPrice = 19m;
+            bottle.StockQuantity = 0;
+            var bands = await update.Products.SingleAsync(product => product.Id == setup.ResistanceBandsId);
+            bands.DiscountPrice = 34m;
+            bands.StockQuantity = 8;
+            await update.SaveChangesAsync();
+        }
+
+        var comparison = await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "Compare the first two");
+
+        Assert.Equal(
+            [setup.TerraBottleId, setup.ResistanceBandsId],
+            comparison.Message!.Products.Select(card => card.ProductId!.Value).ToArray());
+        Assert.Contains("Terra Water Bottle — 19.00, out of stock", comparison.Message.Content);
+        Assert.Contains("Resistance Bands — 34.00, in stock (8 available)", comparison.Message.Content);
+        Assert.DoesNotContain("Pocket Power Bank", comparison.Message.Content);
+        Assert.DoesNotContain(comparison.Message.Products, card => card.Category == "Electronics");
+    }
+
+    [Fact]
+    public async Task Alternative_to_second_product_uses_grounded_current_same_category_candidates()
+    {
+        await using var database = await SqliteFileTestDatabase.CreateAsync();
+        var setup = await SeedConversationCatalogAsync(database);
+        await using var context = database.CreateContext();
+        var service = CreateService(context, new MockAssistantAiClient());
+        await service.SendAsync(setup.UserId, setup.ConversationId, Guid.NewGuid(), "Show electronics");
+
+        await using (var update = database.CreateContext())
+        {
+            var pocket = await update.Products.SingleAsync(product => product.Id == setup.PocketPowerBankId);
+            pocket.DiscountPrice = 20m;
+            pocket.StockQuantity = 5;
+            var headphones = await update.Products.SingleAsync(product => product.Id == setup.AuroraHeadphonesId);
+            headphones.DiscountPrice = 88m;
+            headphones.StockQuantity = 6;
+            await update.SaveChangesAsync();
+        }
+
+        var alternative = await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "show me an alternative to the second one");
+
+        Assert.Equal(AssistantSendStatus.Completed, alternative.Status);
+        Assert.Contains("Pocket Power Bank at 20.00", alternative.Message!.Content);
+        Assert.Contains("Aurora Wireless Headphones at 88.00", alternative.Message.Content);
+        Assert.DoesNotContain("Luma Smart Desk Lamp at", alternative.Message.Content);
+        Assert.Equal(2, alternative.Message.Products.Count);
+        Assert.DoesNotContain(alternative.Message.Products, card => card.ProductId == setup.LumaDeskLampId);
+        var candidates = alternative.Message.Products
+            .Where(card => card.ProductId == setup.PocketPowerBankId || card.ProductId == setup.AuroraHeadphonesId)
+            .ToArray();
+        Assert.Equal(2, candidates.Length);
+        Assert.All(candidates, card =>
+        {
+            Assert.Equal("Electronics", card.Category);
+            Assert.True(card.StockQuantity > 0);
+            Assert.False(card.IsUnavailable);
+        });
+    }
+
+    [Fact]
+    public async Task Structured_references_older_than_context_bound_are_not_resurrected()
+    {
+        await using var database = await SqliteFileTestDatabase.CreateAsync();
+        var setup = await SeedConversationCatalogAsync(database);
+        await using var context = database.CreateContext();
+        var service = CreateService(context, new MockAssistantAiClient());
+        await service.SendAsync(setup.UserId, setup.ConversationId, Guid.NewGuid(), "Show electronics");
+
+        await using (var insert = database.CreateContext())
+        {
+            var conversation = await insert.ChatConversations.SingleAsync(item => item.Id == setup.ConversationId);
+            var firstSequence = conversation.LastSequence + 1;
+            insert.ChatMessages.AddRange(Enumerable.Range(0, 21).Select(index => new ChatMessage
+            {
+                Id = Guid.NewGuid(), ConversationId = setup.ConversationId, Role = ChatMessageRole.User,
+                Content = $"intervening message {index + 1}", Sequence = firstSequence + index
+            }));
+            conversation.LastSequence += 21;
+            await insert.SaveChangesAsync();
+        }
+
+        var followup = await service.SendAsync(
+            setup.UserId, setup.ConversationId, Guid.NewGuid(), "Which one is best?");
+
+        Assert.Equal(AssistantSendStatus.Completed, followup.Status);
+        Assert.Contains("don’t have a recent product set", followup.Message!.Content);
+        Assert.Empty(followup.Message.Products);
+    }
+
+    [Fact]
     public async Task Foreign_currency_short_circuits_without_provider_or_price_query()
     {
         await using var database = await SqliteFileTestDatabase.CreateAsync();
@@ -187,12 +458,18 @@ public sealed class ShoppingAssistantServiceTests
         var provider = new CountingProvider("should not run");
         var result = await CreateService(context, provider)
             .SendAsync(setup.UserId, setup.ConversationId, Guid.NewGuid(), "Show products under 2.000 TL");
+        var minimal = await CreateService(context, provider)
+            .SendAsync(setup.UserId, setup.ConversationId, Guid.NewGuid(), "100 EUR");
 
         Assert.Equal(AssistantSendStatus.Completed, result.Status);
+        Assert.Equal(AssistantSendStatus.Completed, minimal.Status);
         Assert.Equal(0, provider.CallCount);
         Assert.Contains("USD", result.Message!.Content);
         Assert.Contains("TRY", result.Message.Content);
         Assert.Empty(result.Message.Products);
+        Assert.Contains("USD", minimal.Message!.Content);
+        Assert.Contains("EUR", minimal.Message.Content);
+        Assert.Empty(minimal.Message.Products);
     }
 
     [Fact]
@@ -321,7 +598,73 @@ public sealed class ShoppingAssistantServiceTests
         return new Setup(user.Id, conversation.Id);
     }
 
+    private static async Task<ConversationCatalogSetup> SeedConversationCatalogAsync(SqliteFileTestDatabase database)
+    {
+        await using var db = database.CreateContext();
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid().ToString(), UserName = "catalogue-assistant@test.local",
+            NormalizedUserName = "CATALOGUE-ASSISTANT@TEST.LOCAL", Email = "catalogue-assistant@test.local",
+            NormalizedEmail = "CATALOGUE-ASSISTANT@TEST.LOCAL", FirstName = "Catalogue", LastName = "User"
+        };
+        var electronics = new Category
+        {
+            Name = "Electronics", NormalizedName = "ELECTRONICS", Slug = "electronics"
+        };
+        var fitness = new Category
+        {
+            Name = "Fitness", NormalizedName = "FITNESS", Slug = "fitness"
+        };
+        var pocketPowerBank = Product(electronics, "Pocket Power Bank", "pocket-power-bank", 49m, 0, 39m);
+        var lumaDeskLamp = Product(electronics, "Luma Smart Desk Lamp", "luma-smart-desk-lamp", 79m, 4);
+        var auroraHeadphones = Product(electronics, "Aurora Wireless Headphones", "aurora-headphones", 129m, 18, 99m);
+        var retiredCamera = Product(electronics, "Retired Camera", "retired-camera", 10m, 50);
+        retiredCamera.IsActive = false;
+        var terraBottle = Product(fitness, "Terra Water Bottle", "terra-water-bottle", 29m, 3);
+        var resistanceBands = Product(fitness, "Resistance Bands", "resistance-bands", 39m, 40);
+        var yogaMat = Product(fitness, "Yoga Mat", "yoga-mat", 62m, 16);
+        var conversation = new ChatConversation { Id = Guid.NewGuid(), User = user, UserId = user.Id };
+        db.AddRange(user, electronics, fitness, pocketPowerBank, lumaDeskLamp, auroraHeadphones, retiredCamera,
+            terraBottle, resistanceBands, yogaMat, conversation);
+        await db.SaveChangesAsync();
+        return new ConversationCatalogSetup(
+            user.Id, conversation.Id, pocketPowerBank.Id, lumaDeskLamp.Id, auroraHeadphones.Id,
+            terraBottle.Id, resistanceBands.Id, yogaMat.Id);
+
+        static Product Product(
+            Category category, string name, string slug, decimal normalPrice, int stockQuantity, decimal? discountPrice = null) =>
+            new()
+            {
+                Category = category, Name = name, Slug = slug, ShortDescription = $"Current {name} listing",
+                FullDescription = $"Public catalogue details for {name}.", NormalPrice = normalPrice,
+                DiscountPrice = discountPrice, StockQuantity = stockQuantity
+            };
+    }
+
+    private static void AssertLiveCards(
+        AssistantMessageDto message,
+        IReadOnlyDictionary<int, (decimal Price, int Stock)> current)
+    {
+        Assert.Equal(current.Keys.Order(), message.Products.Select(card => card.ProductId!.Value).Order());
+        foreach (var card in message.Products)
+        {
+            var expected = current[card.ProductId!.Value];
+            Assert.Equal(expected.Price, card.Price);
+            Assert.Equal(expected.Stock, card.StockQuantity);
+            Assert.False(card.IsUnavailable);
+        }
+    }
+
     private sealed record Setup(string UserId, Guid ConversationId);
+    private sealed record ConversationCatalogSetup(
+        string UserId,
+        Guid ConversationId,
+        int PocketPowerBankId,
+        int LumaDeskLampId,
+        int AuroraHeadphonesId,
+        int TerraBottleId,
+        int ResistanceBandsId,
+        int YogaMatId);
 
     private sealed class CountingProvider(string reply) : IAssistantAiClient
     {

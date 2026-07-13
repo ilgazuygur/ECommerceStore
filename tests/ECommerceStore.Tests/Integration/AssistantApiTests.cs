@@ -81,6 +81,69 @@ public sealed class AssistantApiTests
     }
 
     [Fact]
+    public async Task Whitespace_message_returns_friendly_problem_response()
+    {
+        await WithFactoryAsync(async factory =>
+        {
+            using var client = CreateClient(factory);
+            await SignInAsync(client, ApplicationDbInitializer.DevelopmentAdminEmail, ApplicationDbInitializer.DevelopmentAdminPassword);
+            var token = await GetTokenAsync(client);
+            var conversationId = await CreateConversationAsync(client, token);
+
+            using var response = await SendMessageAsync(client, token, conversationId, " \t\r\n ");
+
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+            using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Equal("Invalid assistant message", problem.RootElement.GetProperty("title").GetString());
+            Assert.Equal(
+                "Tell me a product, category, budget, or what you need it for.",
+                problem.RootElement.GetProperty("detail").GetString());
+        });
+    }
+
+    [Fact]
+    public async Task Meaningless_single_character_completes_with_guidance_and_no_cards()
+    {
+        await WithFactoryAsync(async factory =>
+        {
+            using var client = CreateClient(factory);
+            await SignInAsync(client, ApplicationDbInitializer.DevelopmentAdminEmail, ApplicationDbInitializer.DevelopmentAdminPassword);
+            var token = await GetTokenAsync(client);
+            var conversationId = await CreateConversationAsync(client, token);
+
+            using var response = await SendMessageAsync(client, token, conversationId, "f");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var message = result.RootElement.GetProperty("message");
+            Assert.Equal("assistant", message.GetProperty("role").GetString());
+            Assert.Contains("product, category, budget", message.GetProperty("content").GetString() ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(0, message.GetProperty("products").GetArrayLength());
+        });
+    }
+
+    [Fact]
+    public async Task Recognized_short_product_terms_are_not_rejected_as_invalid_input()
+    {
+        await WithFactoryAsync(async factory =>
+        {
+            using var client = CreateClient(factory);
+            await SignInAsync(client, ApplicationDbInitializer.DevelopmentAdminEmail, ApplicationDbInitializer.DevelopmentAdminPassword);
+            var token = await GetTokenAsync(client);
+            var conversationId = await CreateConversationAsync(client, token);
+
+            foreach (var prompt in new[] { "TV", "PC", "4K" })
+            {
+                using var response = await SendMessageAsync(client, token, conversationId, prompt);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                using var result = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+                Assert.Equal("assistant", result.RootElement.GetProperty("message").GetProperty("role").GetString());
+            }
+        });
+    }
+
+    [Fact]
     public async Task Foreign_owned_conversation_is_hidden_as_404()
     {
         await WithFactoryAsync(async factory =>
@@ -172,6 +235,32 @@ public sealed class AssistantApiTests
     }
 
     private static async Task<string> GetTokenAsync(HttpClient client) => ExtractToken(await (await client.GetAsync("/")).Content.ReadAsStringAsync());
+
+    private static async Task<Guid> CreateConversationAsync(HttpClient client, string token)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/assistant/conversations") { Content = JsonContent("{}") };
+        request.Headers.Add("RequestVerificationToken", token);
+        using var response = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return json.RootElement.GetProperty("id").GetGuid();
+    }
+
+    private static async Task<HttpResponseMessage> SendMessageAsync(
+        HttpClient client,
+        string token,
+        Guid conversationId,
+        string message)
+    {
+        var body = JsonSerializer.Serialize(new { clientRequestId = Guid.NewGuid(), message });
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/assistant/conversations/{conversationId}/messages")
+        {
+            Content = JsonContent(body)
+        };
+        request.Headers.Add("RequestVerificationToken", token);
+        return await client.SendAsync(request);
+    }
+
     private static string ExtractToken(string html)
     {
         var value = Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value;

@@ -37,8 +37,11 @@ public sealed class AssistantController(IShoppingAssistantService assistant) : C
     [HttpPost("conversations/{conversationId:guid}/messages")]
     public async Task<IActionResult> Send(Guid conversationId, SendAssistantMessageRequest input, CancellationToken token)
     {
-        if (input.ClientRequestId == Guid.Empty || string.IsNullOrWhiteSpace(input.Message))
-            return Problem(statusCode: StatusCodes.Status400BadRequest, title: "Invalid assistant message", detail: "A message and clientRequestId are required.");
+        if (input.ClientRequestId == Guid.Empty)
+            return Problem(statusCode: StatusCodes.Status400BadRequest, title: "Invalid assistant message", detail: "A valid request id is required.");
+        if (string.IsNullOrWhiteSpace(input.Message))
+            return Problem(statusCode: StatusCodes.Status400BadRequest, title: "Invalid assistant message",
+                detail: "Tell me a product, category, budget, or what you need it for.");
 
         var result = await assistant.SendAsync(UserId(), conversationId, input.ClientRequestId, input.Message, token);
         return result.Status switch

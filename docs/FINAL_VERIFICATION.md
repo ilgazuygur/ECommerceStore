@@ -1,14 +1,14 @@
 # Final Verification Record
 
-This document records what was actually built, run, and observed during the
-secure-image phase completion and final acceptance. It distinguishes checks that
+This document records what was actually built, run, and observed through the
+shopping-assistant integration and final acceptance. It distinguishes checks that
 were **performed** from checks that were **not performed**. Nothing here is
 assumed.
 
-- **Date:** 2026-07-11
+- **Date:** 2026-07-13
 - **Host:** macOS (Apple Silicon), .NET SDK 8.0.422
-- **Repository branch:** `main`
-- **Local run URL used for verification:** `http://127.0.0.1:5080`
+- **Repository branch:** `feat/shopping-assistant-integration`
+- **Local run URL used for verification:** `http://127.0.0.1:5187`
 
 ---
 
@@ -26,10 +26,11 @@ Command: `dotnet test --configuration Release`
 
 | Metric | Count |
 |--------|-------|
-| Passed | **106** |
+| Passed | **161** |
 | Failed | **0** |
 | Skipped | **0** |
 
+Focused assistant namespace tests: 49 passed; assistant HTTP integration tests: 6 passed.
 Focused secure-image tests (`ProductImageServiceTests`): 15 passed.
 Admin-service tests including upload persistence/compensation: passed.
 The suite uses real SQLite (in-memory and temporary file) and
@@ -40,9 +41,12 @@ transaction/concurrency behavior.
 
 | Check | Result |
 |-------|--------|
-| `dotnet ef database update --project src/ECommerceStore.Web` (existing dev DB) | Applied; "already up to date" on re-run |
-| Fresh migration against a disposable SQLite database | Applied `20260710102327_InitialCreate`; **17 tables** created |
+| `dotnet ef database update --project src/ECommerceStore.Web` (existing dev DB) | Applied `20260713115617_AddShoppingAssistant` after an online timestamped backup |
+| Fresh migration against disposable SQLite databases | Applied initial + assistant migrations through HTTP integration tests |
+| Migration against a temporary copy of the existing dev DB | Applied; product/category/user counts stayed **14/4/5**; `PRAGMA foreign_key_check` clean |
+| Local pre-migration backup | `App_Data/ecommerce-pre-assistant-20260713-150734.db` (git-ignored) |
 | `Products` table has `ImageKind` + `ImageLocation` columns | Confirmed |
+| Assistant schema | Conversation/message/product-reference/request tables and indexes confirmed |
 | Separate invoice table | Absent by design (invoices regenerate from snapshots) |
 
 ## 4. Seed and startup
@@ -101,15 +105,42 @@ strict CSP:
 The same 17-check script passed both before and after the CSP/security-header
 change.
 
-## 8. Responsive checks (performed live in a browser)
+## 8. Shopping assistant (performed live and automated)
+
+| Workflow | Result |
+|----------|--------|
+| Anonymous widget | Polished sign-in state; assistant API returns JSON 401 without redirect |
+| Authenticated first use | Creates a conversation and persists it per user |
+| Combined live filters | “in-stock electronics under $100” returned only the two current in-stock matches and live USD prices |
+| Product cards | Server-grounded links, images/placeholders, category, current price, and current stock rendered safely |
+| Multi-turn references | “Which of those is cheaper?” reloaded both structured references and selected the current cheaper product |
+| Foreign currency | “under 2.000 TL” returned the supported-USD message and did not run a misleading price query |
+| Retry/idempotency | Same UUID replay, fresh 202, failed retry, concurrent duplicate, and stale takeover covered by real SQLite tests |
+| Stale ownership | Worker A was rejected after Worker B took a new attempt token; exactly one assistant message persisted |
+| Independent processing | A blocked provider in one conversation did not hold a database transaction or block another conversation |
+| Hidden product history | Inactive product details were removed and replaced with a non-linking unavailable snapshot |
+| Security API behavior | Ownership 404, antiforgery 400, JSON 401, prompt/tool bounds, and per-user limiter verified |
+
+The deterministic mock required no external key. The optional OpenAI-compatible
+transport was verified with stub HTTP handlers for tool serialization/parsing,
+authentication failures, malformed responses, timeouts, caller cancellation, and
+key non-disclosure; no live external provider call was made.
+
+## 9. Responsive checks (performed live in a browser)
 
 | Viewport | Pages checked | Result |
 |----------|---------------|--------|
 | 1440×900 | Home, catalog, product detail, login, 404 | Correct |
 | 768×1024 | Admin orders | Correct after the tablet nav fix committed in this pass |
 | 390×844  | Catalog + mobile nav toggle (Bootstrap collapse under CSP) | Correct; menu expands/collapses |
+| Default desktop | Assistant popup, long history, cards, focus behavior | Header and composer remain fixed; message pane alone scrolls |
+| 390×844 | Assistant bottom drawer | Horizontal conversation history, body lock, scrollable messages, visible composer, product cards |
 
-## 9. Accessibility checks (performed)
+Assistant keyboard checks: focus moves into the dialog, Tab is trapped, Enter
+sends, Shift+Enter remains available for multiline input, Escape closes, focus
+returns to the launcher, and the mobile body lock is removed.
+
+## 10. Accessibility checks (performed)
 
 A DOM-based accessibility audit was run via the browser on the catalog and
 product-detail pages. Findings:
@@ -124,7 +155,7 @@ product-detail pages. Findings:
 > (axe/Lighthouse). A CDN-hosted scanner cannot be injected because the app's own
 > Content-Security-Policy blocks external scripts and the build host is offline.
 
-## 10. Security headers (verified via response inspection)
+## 11. Security headers (verified via response inspection)
 
 Present on both dynamic pages and static files:
 
@@ -134,21 +165,26 @@ Present on both dynamic pages and static files:
 - `X-Frame-Options: DENY`
 - `Referrer-Policy: strict-origin-when-cross-origin`
 
-No CSP console violations were observed on the storefront, catalog, mobile nav,
-or admin product form.
+No CSP console violations were observed on the storefront, assistant desktop or
+mobile UI, login/validation page, or admin product form. The final browser console
+was empty after correcting the validation partial's jQuery load order.
 
-## 11. Known warnings
+## 12. Known warnings
 
 - `NU1900` restore/build warnings from the offline NuGet vulnerability service.
 - "Failed to determine the https port for redirect" when the app is bound only to
   an HTTP URL.
 
-## 12. Known limitations
+## 13. Known limitations
 
-- Payment and AI are deterministic mocks; no real provider is integrated.
+- Payment is deterministic/fake. The assistant defaults to its deterministic
+  mock. Its real OpenAI-compatible transport is implemented and stub-tested but
+  was not exercised against an external paid provider.
+- The assistant has bounded recent context and no access to orders or customer
+  data. It does not perform currency conversion.
 - Docker is not required or provided.
 
-## 13. Checks not performed
+## 14. Checks not performed
 
 - **Windows execution.** All builds/tests/migrations/runtime checks above were
   performed on macOS (Apple Silicon). The Windows commands in the README are

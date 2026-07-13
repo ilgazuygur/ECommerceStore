@@ -61,8 +61,6 @@ jobs:
   migrations:
     name: Validate migrations and model
     runs-on: ubuntu-latest
-    env:
-      ConnectionStrings__DefaultConnection: Data Source=${{ runner.temp }}/ecommerce-model-check.db
 
     steps:
       - name: Check out repository
@@ -96,6 +94,8 @@ jobs:
         run: test -s "${RUNNER_TEMP}/ecommerce-ci.db"
 
       - name: Confirm the model has no pending migration changes
+        env:
+          ConnectionStrings__DefaultConnection: Data Source=${{ runner.temp }}/ecommerce-model-check.db
         run: >-
           dotnet ef migrations has-pending-model-changes
           --project src/ECommerceStore.Web/ECommerceStore.Web.csproj

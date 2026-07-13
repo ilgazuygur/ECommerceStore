@@ -1,5 +1,6 @@
 using ECommerceStore.Web.Models.Cart;
 using ECommerceStore.Web.Models.Catalog;
+using ECommerceStore.Web.Models.Assistant;
 using ECommerceStore.Web.Models.Identity;
 using ECommerceStore.Web.Models.Orders;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -18,6 +19,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<PaymentRecord> PaymentRecords => Set<PaymentRecord>();
+    public DbSet<ChatConversation> ChatConversations => Set<ChatConversation>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<ChatMessageProduct> ChatMessageProducts => Set<ChatMessageProduct>();
+    public DbSet<AssistantRequest> AssistantRequests => Set<AssistantRequest>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -86,6 +91,17 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 order.CreatedAtUtc = order.CreatedAtUtc == default ? now : order.CreatedAtUtc;
                 order.UpdatedAtUtc = now;
                 break;
+            case ChatConversation conversation:
+                conversation.CreatedAtUtc = conversation.CreatedAtUtc == default ? now : conversation.CreatedAtUtc;
+                conversation.UpdatedAtUtc = now;
+                break;
+            case ChatMessage message:
+                message.CreatedAtUtc = message.CreatedAtUtc == default ? now : message.CreatedAtUtc;
+                break;
+            case AssistantRequest request:
+                request.CreatedAtUtc = request.CreatedAtUtc == default ? now : request.CreatedAtUtc;
+                request.UpdatedAtUtc = now;
+                break;
         }
     }
 
@@ -118,6 +134,12 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             case Order order:
                 order.UpdatedAtUtc = now;
                 order.Version++;
+                break;
+            case ChatConversation conversation:
+                conversation.UpdatedAtUtc = now;
+                break;
+            case AssistantRequest request:
+                request.UpdatedAtUtc = now;
                 break;
         }
     }

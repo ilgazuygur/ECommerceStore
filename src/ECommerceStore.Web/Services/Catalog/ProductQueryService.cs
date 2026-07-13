@@ -13,6 +13,34 @@ public interface IProductQueryService
     Task<HomeViewModel> GetHomeAsync(CancellationToken cancellationToken = default);
     Task<ProductListViewModel> SearchAsync(ProductQueryRequest request, CancellationToken cancellationToken = default);
     Task<ProductDetailsViewModel?> GetDetailsAsync(string slug, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<PublicProductResult>> SearchForAssistantAsync(AssistantProductQuery request, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<int, PublicProductResult>> GetPublicProductsByIdsAsync(IEnumerable<int> productIds, CancellationToken cancellationToken = default);
+}
+
+public sealed record AssistantProductQuery(
+    string? Keyword = null,
+    string? Category = null,
+    decimal? MinimumPrice = null,
+    decimal? MaximumPrice = null,
+    bool InStockOnly = false,
+    IReadOnlyCollection<int>? ProductIds = null,
+    int Limit = 6);
+
+public sealed record PublicProductResult(
+    int Id,
+    string Name,
+    string Slug,
+    string ShortDescription,
+    decimal NormalPrice,
+    decimal? DiscountPrice,
+    int StockQuantity,
+    string CategoryName,
+    string CategorySlug,
+    string? ImageUrl)
+{
+    public decimal EffectivePrice => DiscountPrice ?? NormalPrice;
+    public bool IsInStock => StockQuantity > 0;
+    public string ProductUrl => $"/products/{Slug}";
 }
 
 public sealed class ProductQueryService(ApplicationDbContext db, IOptions<StoreOptions> options) : IProductQueryService
@@ -120,6 +148,77 @@ public sealed class ProductQueryService(ApplicationDbContext db, IOptions<StoreO
         };
     }
 
+    public async Task<IReadOnlyList<PublicProductResult>> SearchForAssistantAsync(
+        AssistantProductQuery request,
+        CancellationToken cancellationToken = default)
+    {
+        var limit = Math.Clamp(request.Limit, 1, 8);
+        var keyword = request.Keyword?.Trim();
+        var category = request.Category?.Trim().ToLowerInvariant();
+        if (keyword?.Length > 100 || category?.Length > 120)
+            return [];
+
+        IQueryable<Product> query = PublicProducts();
+        if (request.ProductIds is { Count: > 0 })
+        {
+            var ids = request.ProductIds.Where(id => id > 0).Distinct().Take(20).ToArray();
+            query = query.Where(product => ids.Contains(product.Id));
+        }
+        if (!string.IsNullOrWhiteSpace(category))
+            query = query.Where(product => product.Category.Slug == category || product.Category.Name.ToLower() == category);
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var pattern = $"%{EscapeLike(keyword)}%";
+            query = query.Where(product =>
+                EF.Functions.Like(product.Name, pattern, "\\") ||
+                EF.Functions.Like(product.ShortDescription, pattern, "\\") ||
+                EF.Functions.Like(product.FullDescription, pattern, "\\"));
+        }
+        if (request.MinimumPrice.HasValue)
+            query = query.Where(product => (product.DiscountPrice ?? product.NormalPrice) >= request.MinimumPrice.Value);
+        if (request.MaximumPrice.HasValue)
+            query = query.Where(product => (product.DiscountPrice ?? product.NormalPrice) <= request.MaximumPrice.Value);
+        if (request.InStockOnly)
+            query = query.Where(product => product.StockQuantity > 0);
+
+        var rows = await query.OrderBy(product => product.DiscountPrice ?? product.NormalPrice).ThenBy(product => product.Id)
+            .Take(limit)
+            .Select(product => new
+            {
+                product.Id, product.Name, product.Slug, product.ShortDescription,
+                product.NormalPrice, product.DiscountPrice, product.StockQuantity,
+                CategoryName = product.Category.Name, CategorySlug = product.Category.Slug,
+                product.ImageKind, product.ImageLocation
+            })
+            .ToListAsync(cancellationToken);
+        return rows.Select(product => new PublicProductResult(
+            product.Id, product.Name, product.Slug, product.ShortDescription,
+            product.NormalPrice, product.DiscountPrice, product.StockQuantity,
+            product.CategoryName, product.CategorySlug, ResolveImageUrl(product.ImageKind, product.ImageLocation))).ToList();
+    }
+
+    public async Task<IReadOnlyDictionary<int, PublicProductResult>> GetPublicProductsByIdsAsync(
+        IEnumerable<int> productIds,
+        CancellationToken cancellationToken = default)
+    {
+        var ids = productIds.Where(id => id > 0).Distinct().Take(100).ToArray();
+        if (ids.Length == 0) return new Dictionary<int, PublicProductResult>();
+        var rows = await PublicProducts().Where(product => ids.Contains(product.Id))
+            .Select(product => new
+            {
+                product.Id, product.Name, product.Slug, product.ShortDescription,
+                product.NormalPrice, product.DiscountPrice, product.StockQuantity,
+                CategoryName = product.Category.Name, CategorySlug = product.Category.Slug,
+                product.ImageKind, product.ImageLocation
+            })
+            .ToListAsync(cancellationToken);
+        var products = rows.Select(product => new PublicProductResult(
+            product.Id, product.Name, product.Slug, product.ShortDescription,
+            product.NormalPrice, product.DiscountPrice, product.StockQuantity,
+            product.CategoryName, product.CategorySlug, ResolveImageUrl(product.ImageKind, product.ImageLocation))).ToList();
+        return products.ToDictionary(product => product.Id);
+    }
+
     private IQueryable<Product> PublicProducts() => db.Products.AsNoTracking()
         .Where(product => product.IsActive && product.Category.IsActive);
 
@@ -169,8 +268,17 @@ public sealed class ProductQueryService(ApplicationDbContext db, IOptions<StoreO
 
     private static string? ResolveImageUrl(ProductImageKind kind, string? location) => kind switch
     {
-        ProductImageKind.Local when !string.IsNullOrWhiteSpace(location) => "/" + location.TrimStart('/'),
-        ProductImageKind.ExternalUrl when Uri.TryCreate(location, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps => uri.AbsoluteUri,
+        ProductImageKind.Local when IsSafeManagedImagePath(location) => "/" + location!.TrimStart('/'),
+        ProductImageKind.ExternalUrl when Uri.TryCreate(location, UriKind.Absolute, out var uri) &&
+            uri.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(uri.UserInfo) => uri.AbsoluteUri,
         _ => null
     };
+
+    private static bool IsSafeManagedImagePath(string? location)
+    {
+        if (string.IsNullOrWhiteSpace(location)) return false;
+        var normalized = location.TrimStart('/');
+        return normalized.StartsWith("uploads/products/", StringComparison.OrdinalIgnoreCase) &&
+            !normalized.Contains("..", StringComparison.Ordinal) && !normalized.Contains('\\');
+    }
 }

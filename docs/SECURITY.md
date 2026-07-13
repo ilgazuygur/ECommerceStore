@@ -31,6 +31,17 @@ and the code/test evidence for each. It complements the security summary in the
 | 21 | Secret leakage | No secrets in source/config; SMTP password via user secrets or environment variables | `appsettings.json` (empty SMTP); `.gitignore` |
 | 22 | Insecure cookies in Production | `HttpOnly`, `SameSite=Lax`, `SecurePolicy=Always` in Production; HSTS + HTTPS redirection | `Program.cs` |
 | 23 | Email/PDF failure corrupting orders | Side effects run after commit and are isolated; a failure never rolls back a committed order | `Services/Orders/OrderConfirmationDispatcher.cs`; `OrderConfirmationDispatcherTests`, `EmailServiceTests` |
+| 24 | Cross-user chat access (IDOR) | Every conversation/message/request query includes the authenticated user ownership predicate; foreign IDs return a non-disclosing 404 | `AssistantController`; `ShoppingAssistantService`; `AssistantApiTests`, `ShoppingAssistantServiceTests` |
+| 25 | Duplicate assistant work/replies | Unique `(ConversationId, ClientRequestId)` request row, replay of completed responses, fresh-processing 202, and failed/stale atomic retries | `AssistantRequestConfiguration`; `ShoppingAssistantService`; assistant idempotency tests |
+| 26 | Stale worker overwrites a newer assistant attempt | Every processing transition gets a new `ProcessingAttemptId`; completion/failure conditionally updates only the matching processing owner, with reply/products/state in one transaction | `ShoppingAssistantService`; `Stale_worker_cannot_complete_after_new_attempt_takes_ownership` |
+| 27 | Duplicate/out-of-order chat sequences | Conditional `LastSequence` optimistic allocation plus unique `(ConversationId, Sequence)` database invariant; no `MAX + 1` | `ChatConversationConfiguration`; assistant concurrency tests |
+| 28 | Prompt injection / unrestricted data access | Read-only allow-listed tools with typed bounded arguments; public catalogue service only; system instruction treats catalogue descriptions as untrusted; no SQL, order, user, admin, or mutation tool | `ProductAssistantTools`; `ShoppingAssistantService`; tool tests |
+| 29 | Hallucinated or hidden product cards | Cards are created only from executed tool results and live public records; history re-resolves active products and returns only a safe unavailable name snapshot otherwise | `ProductQueryService`; `ShoppingAssistantService`; grounding/history tests |
+| 30 | Assistant XSS | Provider/database text is rendered through `textContent` and created DOM nodes; no `innerHTML`; existing strict same-origin script CSP remains active | `wwwroot/js/assistant.js`; `Program.cs`; browser console verification |
+| 31 | Assistant CSRF / API redirect confusion | Global anti-forgery remains active and JavaScript sends `RequestVerificationToken`; assistant cookie challenges return RFC 7807 JSON 401/403 while MVC redirects remain unchanged | `Program.cs`; `EnabledUserCookieEvents`; `AssistantApiTests` |
+| 32 | Assistant abuse / resource exhaustion | Per-user fixed-window rate limit, prompt/result/history/tool-loop limits, provider timeout, cancellation, and bounded concurrency retries | `Program.cs`; `AssistantOptions`; orchestration/provider tests |
+| 33 | AI credential leakage | Key exists only in options populated from user secrets/environment; response bodies and keys are excluded from exceptions/logs/tests | `OpenAiCompatibleAssistantClient`; `AssistantProviderTests` |
+| 34 | Foreign-currency price misrepresentation | Explicit USD/TRY/EUR token and locale-separator parser; foreign requests short-circuit; no conversion or TL-to-USD reinterpretation | `CurrencyAmountParser`; assistant currency tests |
 
 ## Content-Security-Policy
 
@@ -48,8 +59,8 @@ frame-ancestors 'none'
 ```
 
 `script-src` intentionally omits `'unsafe-inline'`: all behavior lives in
-`wwwroot/js/site.js` and uses `data-*` attributes, so no inline script or inline
-event handler exists. `style-src` allows inline styles because Bootstrap sets
+`wwwroot/js/site.js` / `wwwroot/js/assistant.js` and uses `data-*` attributes, so
+no inline script or inline event handler exists. `style-src` allows inline styles because Bootstrap sets
 element styles at runtime; this is a lower-risk allowance than inline scripts.
 `img-src` permits external HTTPS images because products may reference an external
 image URL.
@@ -60,5 +71,8 @@ image URL.
 - The web project defines a `UserSecretsId`; store the SMTP password with
   `dotnet user-secrets set "Smtp:Password" "…"` or the `Smtp__Password`
   environment variable.
+- A real shopping-assistant key uses `Assistant:ApiKey` in user secrets or
+  `Assistant__ApiKey` in the environment. `appsettings.json` intentionally has no
+  key property/value.
 - SQLite databases, generated emails, generated PDFs, and runtime-uploaded images
   are git-ignored.

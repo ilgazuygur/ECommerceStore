@@ -3,6 +3,7 @@ using ECommerceStore.Web.Data;
 using ECommerceStore.Web.Models.Catalog;
 using ECommerceStore.Web.Services.Common;
 using ECommerceStore.Web.Services.Orders;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 
@@ -77,18 +78,21 @@ public sealed class DataModelTests
                 await setup.SaveChangesAsync();
             }
 
-            await using var first = new ApplicationDbContext(options);
-            await using var second = new ApplicationDbContext(options);
-            var firstProduct = await first.Products.SingleAsync();
-            var secondProduct = await second.Products.SingleAsync();
-            firstProduct.StockQuantity = 4;
-            secondProduct.StockQuantity = 3;
-            await first.SaveChangesAsync();
+            await using (var first = new ApplicationDbContext(options))
+            await using (var second = new ApplicationDbContext(options))
+            {
+                var firstProduct = await first.Products.SingleAsync();
+                var secondProduct = await second.Products.SingleAsync();
+                firstProduct.StockQuantity = 4;
+                secondProduct.StockQuantity = 3;
+                await first.SaveChangesAsync();
 
-            await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => second.SaveChangesAsync());
+                await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => second.SaveChangesAsync());
+            }
         }
         finally
         {
+            SqliteConnection.ClearAllPools();
             if (File.Exists(path))
             {
                 File.Delete(path);

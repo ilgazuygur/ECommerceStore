@@ -5,6 +5,8 @@ A secure, server-rendered e-commerce application built with ASP.NET Core MVC on
 cart, a transactional fake checkout, PDF invoices, order-confirmation email with
 a Development file fallback, a full administrator management area, secure product
 image uploads, and a provider-independent AI seam backed by a deterministic mock.
+It also includes a persistent, per-user shopping assistant that searches the live
+public catalogue through controlled read-only tools and runs offline by default.
 
 The whole application runs locally with **no Docker, no external database, no
 paid services, and no real payment or AI provider**.
@@ -54,6 +56,9 @@ paid services, and no real payment or AI provider**.
   snapshots.
 - Friendly empty states, validation messages, and success/failure feedback.
 - Missing product images fall back to a bundled placeholder.
+- Responsive floating shopping assistant with saved conversations, grounded live
+  product cards, deterministic ordinal follow-ups (such as “the second one” and
+  “the last two”), safe retries, and an anonymous sign-in state.
 
 ### Administrator features
 
@@ -90,8 +95,8 @@ paid services, and no real payment or AI provider**.
 | Image processing     | SixLabors.ImageSharp                          |
 | Testing              | xUnit with real SQLite integration tests      |
 
-JavaScript is intentionally minimal: only the Bootstrap bundle, jQuery
-validation, and a small progressive-enhancement `site.js`. There is no SPA
+JavaScript is intentionally minimal: the Bootstrap bundle, jQuery validation,
+`site.js`, and the framework-free CSP-safe `assistant.js`. There is no SPA
 framework.
 
 ---
@@ -203,10 +208,9 @@ All filesystem access uses `Path.Combine` and `IWebHostEnvironment`, so paths ar
 portable across macOS and Windows. There is no LocalDB, Bash, or PowerShell
 dependency in application code.
 
-> Cross-platform note: the automated and manual verification recorded in
-> [`docs/FINAL_VERIFICATION.md`](docs/FINAL_VERIFICATION.md) was performed on
-> macOS (Apple Silicon). The Windows commands above are provided for portability;
-> Windows execution has not been performed in this environment.
+> Cross-platform note: manual browser/runtime verification was performed on
+> macOS (Apple Silicon). GitHub Actions performs the full Release build and all
+> tests on Ubuntu, macOS, and Windows for pull requests and supported pushes.
 
 ---
 
@@ -246,6 +250,8 @@ Configuration lives in `src/ECommerceStore.Web/appsettings.json`
 - `Store` — store name, currency, shipping fee, low-stock threshold, page sizes.
 - `Uploads` — image size/dimension/pixel limits and the relative upload root.
 - `AI` — `Enabled` flag and `Provider` (defaults to `Mock`).
+- `Assistant` — separate shopping-assistant provider, timeout, prompt, tool-loop,
+  and processing-lease settings (defaults to the deterministic `Mock`).
 - `Smtp` — SMTP host/port/credentials for order and welcome email.
 
 ### SMTP setup
@@ -306,6 +312,8 @@ email delivery fails; the failure is logged without leaking secrets.
   created if missing and are safe to run repeatedly.
 - Money is stored and computed with `decimal` (two decimals, `AwayFromZero`
   rounding) — never floating point.
+- `20260713115617_AddShoppingAssistant` adds durable conversations, messages,
+  normalized message-product references, and idempotent processing requests.
 
 To start from a clean database, stop the app and delete the `App_Data`
 `.db`/`.db-*` files, then re-run the migration command.
@@ -361,7 +369,10 @@ Runtime-uploaded images are git-ignored and never committed.
 
 ## AI architecture
 
-AI is an **optional seam**, not a dependency of any core commerce flow:
+The application has two deliberately separate AI seams. Neither is a dependency
+of any core commerce flow.
+
+### Administrator description draft
 
 - `IAIService` is a provider-independent interface. The shipped implementation is
   `MockAIService` — deterministic, offline, and requiring no API key.
@@ -372,15 +383,55 @@ AI is an **optional seam**, not a dependency of any core commerce flow:
 - Disabling AI (`AI:Enabled = false`) hides the button and leaves every required
   commerce flow working unchanged.
 
-### Future AI-provider integration point
+### Shopping assistant
 
-To add a real provider, implement a new `IAIService` (for example an OpenAI/Azure
-provider that reads its key from user secrets or environment variables — never
-source control) and register it in `Program.cs`, selected by `AIServiceOptions.Provider`.
-A real provider must additionally address prompt injection, output encoding, rate
-limiting, cost controls, timeouts/retries, and the privacy of submitted catalog
-text. None of that is required for the mock. This seam is documented in
-`Services/AI/AIService.cs`.
+- `IAssistantAiClient` is the provider seam used only by the shopping assistant.
+  `MockAssistantAiClient` is the default and requires no API key or network.
+- `OpenAiCompatibleAssistantClient` optionally calls an OpenAI-compatible
+  `/chat/completions` endpoint through `IHttpClientFactory`, including typed tool
+  calls, bounded tool loops, safe provider exceptions, timeout handling, and a
+  distinct caller-cancellation path.
+- The provider never receives unrestricted database access. It can request only
+  registered, validated, read-only catalogue tools backed by
+  `IProductQueryService`; it cannot access users, orders, addresses, carts,
+  administration, SQL, or mutation operations.
+- Product cards are created server-side only from executed tool results, then
+  re-resolved from the current public catalogue whenever history loads. Inactive
+  or deleted products become a non-linking unavailable snapshot.
+- Every send uses a client UUID and a unique database request row. A short claim
+  transaction persists the user message, provider work runs without a database
+  transaction, and a processing-attempt token conditionally owns the atomic reply
+  commit. Stale workers cannot persist or overwrite a newer result.
+- Per-conversation `LastSequence` allocation uses conditional optimistic updates;
+  `MAX(Sequence) + 1` is never used.
+
+The store currency is authoritative (`USD` by default). The assistant parses US
+and European separators and recognizes explicit USD, TRY/TL/₺, and EUR/€ tokens.
+It performs no live conversion and short-circuits a foreign-currency price request
+instead of silently treating it as USD. Changing store currency is a separate
+business/configuration decision, not an automatic conversion.
+
+### Optional real provider setup
+
+Keep credentials outside committed configuration. From the web project:
+
+```bash
+cd src/ECommerceStore.Web
+dotnet user-secrets set "Assistant:Provider" "OpenAICompatible"
+dotnet user-secrets set "Assistant:BaseUrl" "https://api.openai.com/v1"
+dotnet user-secrets set "Assistant:Model" "<compatible-model-id>"
+dotnet user-secrets set "Assistant:ApiKey" "<provider-api-key>"
+```
+
+Equivalent environment variables are `Assistant__Provider`,
+`Assistant__BaseUrl`, `Assistant__Model`, and `Assistant__ApiKey`. The application
+fails configuration validation safely if a real provider is incomplete. Never
+put the key in `appsettings*.json`, shell history, logs, test output, or commits.
+Return to offline mode with:
+
+```bash
+dotnet user-secrets set "Assistant:Provider" "Mock"
+```
 
 ---
 
@@ -409,6 +460,10 @@ text. None of that is required for the mock. This seam is documented in
   diagnostic detail; custom 404 and access-denied pages are provided.
 - **Secrets** are never committed; SMTP passwords use user secrets or environment
   variables.
+- **Assistant boundary**: authenticated owner-scoped APIs return JSON 401/403,
+  unsafe requests require the global anti-forgery token, prompts and tool calls
+  are bounded, per-user requests are rate-limited, and provider/database text is
+  inserted with `textContent` rather than unsafe HTML.
 
 ---
 
@@ -422,8 +477,10 @@ text. None of that is required for the mock. This seam is documented in
 - Coverage includes money rounding, catalog queries, cart mutations and merge,
   checkout idempotency/decline/stock-race/rollback, order and invoice ownership,
   PDF generation, email fallback, admin CRUD/transitions/concurrency/guards,
-  the AI mock, secure image validation and compensation, seeding idempotency,
-  and admin authorization.
+  both AI mocks, assistant ownership/idempotency/attempt takeover/sequencing,
+  controlled catalogue tools, multi-turn references, currencies, provider wire
+  handling, JSON authentication/anti-forgery APIs, secure image validation and
+  compensation, seeding idempotency, and admin authorization.
 
 Run the full suite:
 
@@ -431,7 +488,8 @@ Run the full suite:
 dotnet test --configuration Release
 ```
 
-**Latest result (Release, macOS Apple Silicon): 106 passed, 0 failed, 0 skipped.**
+**Latest result:** 161 passed, 0 failed, 0 skipped locally on macOS and on each
+GitHub Actions runner: Ubuntu, macOS, and Windows.
 
 See [`docs/FINAL_VERIFICATION.md`](docs/FINAL_VERIFICATION.md) for the full
 build/migration/startup/runtime verification record.
@@ -461,12 +519,16 @@ build/migration/startup/runtime verification record.
 - `NU1900` restore warnings ("Error occurred while getting package vulnerability
   data") appear when the build host cannot reach the NuGet vulnerability service.
   They are network-environment warnings only and do not affect the build.
-- Payment and AI are intentionally mock implementations; no real provider is
-  integrated. See the AI integration point above.
+- Payment is intentionally fake. The shopping assistant defaults to its offline
+  mock; the optional OpenAI-compatible transport is implemented but requires the
+  operator to supply and validate their own compatible endpoint, model, and key.
+- Chat context, conversation lists, prompt length, tool iterations, and card
+  counts are intentionally bounded. The assistant does not access personal order
+  history and does not perform currency conversion.
 - Docker is **not** required and is not provided; the local path is the supported
   workflow.
-- Windows execution was not performed in this environment (see the cross-platform
-  note); the code is written to be portable.
+- Manual Windows browser/runtime verification was not performed. Windows Release
+  build and all 161 tests pass in GitHub Actions.
 
 ---
 

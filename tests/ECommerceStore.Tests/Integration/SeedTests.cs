@@ -3,6 +3,7 @@ using ECommerceStore.Web.Data.Seed;
 using ECommerceStore.Web.Models.Identity;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
@@ -80,9 +81,22 @@ public sealed class SeedTests
         public async ValueTask DisposeAsync()
         {
             await Services.DisposeAsync();
-            if (File.Exists(_databasePath))
+            SqliteConnection.ClearAllPools();
+            for (var attempt = 0; attempt < 3; attempt++)
             {
-                File.Delete(_databasePath);
+                try
+                {
+                    if (File.Exists(_databasePath))
+                    {
+                        File.Delete(_databasePath);
+                    }
+
+                    return;
+                }
+                catch (IOException) when (attempt < 2)
+                {
+                    await Task.Delay(25);
+                }
             }
         }
     }

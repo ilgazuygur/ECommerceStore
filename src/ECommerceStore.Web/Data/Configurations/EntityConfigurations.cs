@@ -1,5 +1,6 @@
 using ECommerceStore.Web.Models.Cart;
 using ECommerceStore.Web.Models.Catalog;
+using ECommerceStore.Web.Models.Assistant;
 using ECommerceStore.Web.Models.Identity;
 using ECommerceStore.Web.Models.Orders;
 using Microsoft.EntityFrameworkCore;
@@ -216,5 +217,71 @@ public sealed class PaymentRecordConfiguration : IEntityTypeConfiguration<Paymen
         builder.HasIndex(payment => new { payment.Status, payment.ProcessedAtUtc });
         builder.HasOne(payment => payment.CheckoutAttempt).WithOne(attempt => attempt.PaymentRecord).HasForeignKey<PaymentRecord>(payment => payment.CheckoutAttemptId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(payment => payment.Order).WithOne(order => order.PaymentRecord).HasForeignKey<PaymentRecord>(payment => payment.OrderId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class ChatConversationConfiguration : IEntityTypeConfiguration<ChatConversation>
+{
+    public void Configure(EntityTypeBuilder<ChatConversation> builder)
+    {
+        builder.ToTable("ChatConversations", table =>
+            table.HasCheckConstraint("CK_ChatConversations_LastSequence", "LastSequence >= 0"));
+        builder.Property(conversation => conversation.UserId).HasMaxLength(450).IsRequired();
+        builder.Property(conversation => conversation.Title).HasMaxLength(120).IsRequired();
+        builder.Property(conversation => conversation.LastSequence).IsConcurrencyToken();
+        builder.HasIndex(conversation => new { conversation.UserId, conversation.UpdatedAtUtc, conversation.Id });
+        builder.HasOne(conversation => conversation.User).WithMany().HasForeignKey(conversation => conversation.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class ChatMessageConfiguration : IEntityTypeConfiguration<ChatMessage>
+{
+    public void Configure(EntityTypeBuilder<ChatMessage> builder)
+    {
+        builder.ToTable("ChatMessages", table =>
+            table.HasCheckConstraint("CK_ChatMessages_Sequence", "Sequence > 0"));
+        builder.Property(message => message.Role).HasConversion<int>();
+        builder.Property(message => message.Content).HasMaxLength(8000).IsRequired();
+        builder.HasIndex(message => new { message.ConversationId, message.Sequence }).IsUnique();
+        builder.HasOne(message => message.Conversation).WithMany(conversation => conversation.Messages)
+            .HasForeignKey(message => message.ConversationId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class ChatMessageProductConfiguration : IEntityTypeConfiguration<ChatMessageProduct>
+{
+    public void Configure(EntityTypeBuilder<ChatMessageProduct> builder)
+    {
+        builder.ToTable("ChatMessageProducts", table =>
+            table.HasCheckConstraint("CK_ChatMessageProducts_DisplayPosition", "DisplayPosition > 0"));
+        builder.HasKey(reference => new { reference.MessageId, reference.DisplayPosition });
+        builder.Property(reference => reference.ProductNameSnapshot).HasMaxLength(200).IsRequired();
+        MoneyProperty.Configure(builder.Property(reference => reference.PriceAtReplyTime), "PriceAtReplyTimeMinor");
+        builder.HasIndex(reference => reference.ProductId);
+        builder.HasOne(reference => reference.Message).WithMany(message => message.Products)
+            .HasForeignKey(reference => reference.MessageId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(reference => reference.Product).WithMany().HasForeignKey(reference => reference.ProductId)
+            .OnDelete(DeleteBehavior.SetNull);
+    }
+}
+
+public sealed class AssistantRequestConfiguration : IEntityTypeConfiguration<AssistantRequest>
+{
+    public void Configure(EntityTypeBuilder<AssistantRequest> builder)
+    {
+        builder.ToTable("AssistantRequests");
+        builder.Property(request => request.State).HasConversion<int>();
+        builder.Property(request => request.ErrorCode).HasMaxLength(64);
+        builder.HasIndex(request => new { request.ConversationId, request.ClientRequestId }).IsUnique();
+        builder.HasIndex(request => new { request.State, request.UpdatedAtUtc });
+        builder.HasIndex(request => request.UserMessageId).IsUnique();
+        builder.HasIndex(request => request.AssistantMessageId).IsUnique();
+        builder.HasOne(request => request.Conversation).WithMany(conversation => conversation.Requests)
+            .HasForeignKey(request => request.ConversationId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(request => request.UserMessage).WithMany().HasForeignKey(request => request.UserMessageId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(request => request.AssistantMessage).WithMany().HasForeignKey(request => request.AssistantMessageId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

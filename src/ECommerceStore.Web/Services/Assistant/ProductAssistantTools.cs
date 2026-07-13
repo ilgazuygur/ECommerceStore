@@ -29,6 +29,8 @@ public sealed class ProductAssistantToolService(IProductQueryService products) :
             """{"type":"object","properties":{"keyword":{"type":["string","null"],"maxLength":100},"category":{"type":["string","null"],"maxLength":120},"minimumPrice":{"type":["number","null"],"minimum":0},"maximumPrice":{"type":["number","null"],"minimum":0},"inStockOnly":{"type":"boolean"},"limit":{"type":"integer","minimum":1,"maximum":8}},"additionalProperties":false}"""),
         Definition("GetProductDetails", "Reload one active public product by its database id.",
             """{"type":"object","properties":{"productId":{"type":"integer","minimum":1}},"required":["productId"],"additionalProperties":false}"""),
+        Definition("GetProductAlternatives", "Find active, in-stock alternatives in the same category as one current public product.",
+            """{"type":"object","properties":{"productId":{"type":"integer","minimum":1},"candidateProductIds":{"type":["array","null"],"items":{"type":"integer","minimum":1},"maxItems":5},"cheaperOnly":{"type":"boolean"},"limit":{"type":"integer","minimum":1,"maximum":4}},"required":["productId"],"additionalProperties":false}"""),
         Definition("GetProductsByCategory", "List active public products in an active category.",
             """{"type":"object","properties":{"category":{"type":"string","maxLength":120},"limit":{"type":"integer","minimum":1,"maximum":8}},"required":["category"],"additionalProperties":false}"""),
         Definition("GetProductsWithinPriceRange", "Find active public products in a range of current store-currency prices.",
@@ -43,6 +45,7 @@ public sealed class ProductAssistantToolService(IProductQueryService products) :
         {
             "SearchProducts" => await SearchAsync(Read<SearchArguments>(arguments), cancellationToken),
             "GetProductDetails" => await DetailsAsync(Read<DetailsArguments>(arguments), cancellationToken),
+            "GetProductAlternatives" => await AlternativesAsync(Read<AlternativeArguments>(arguments), cancellationToken),
             "GetProductsByCategory" => await CategoryAsync(Read<CategoryArguments>(arguments), cancellationToken),
             "GetProductsWithinPriceRange" => await PriceAsync(Read<PriceArguments>(arguments), cancellationToken),
             "GetInStockProducts" => await InStockAsync(Read<SearchArguments>(arguments), cancellationToken),
@@ -77,6 +80,27 @@ public sealed class ProductAssistantToolService(IProductQueryService products) :
         if (input.ProductId <= 0) throw new AssistantToolValidationException("productId must be a positive integer.");
         var result = await products.GetPublicProductsByIdsAsync([input.ProductId], token);
         return result.TryGetValue(input.ProductId, out var product) ? [product] : [];
+    }
+
+    private async Task<IReadOnlyList<PublicProductResult>> AlternativesAsync(AlternativeArguments input, CancellationToken token)
+    {
+        if (input.ProductId <= 0) throw new AssistantToolValidationException("productId must be a positive integer.");
+        if (input.CandidateProductIds is { Length: > 5 } || input.CandidateProductIds?.Any(id => id <= 0) == true)
+            throw new AssistantToolValidationException("candidateProductIds must contain at most five positive integers.");
+        if (input.CandidateProductIds is { Length: 0 }) return [];
+        var source = await products.GetPublicProductsByIdsAsync([input.ProductId], token);
+        if (!source.TryGetValue(input.ProductId, out var target)) return [];
+
+        var limit = Math.Clamp(input.Limit ?? 3, 1, 4);
+        var candidates = await products.SearchForAssistantAsync(new AssistantProductQuery(
+            Category: target.CategorySlug,
+            MaximumPrice: input.CheaperOnly ? target.EffectivePrice : null,
+            InStockOnly: true,
+            ProductIds: input.CandidateProductIds,
+            Limit: Math.Min(limit + 1, 8)), token);
+        return candidates.Where(candidate => candidate.Id != target.Id &&
+                (!input.CheaperOnly || candidate.EffectivePrice < target.EffectivePrice))
+            .Take(limit).ToArray();
     }
 
     private Task<IReadOnlyList<PublicProductResult>> CategoryAsync(CategoryArguments input, CancellationToken token)
@@ -152,6 +176,13 @@ public sealed class ProductAssistantToolService(IProductQueryService products) :
         public int? Limit { get; init; }
     }
     private sealed class DetailsArguments { public int ProductId { get; init; } }
+    private sealed class AlternativeArguments
+    {
+        public int ProductId { get; init; }
+        public int[]? CandidateProductIds { get; init; }
+        public bool CheaperOnly { get; init; }
+        public int? Limit { get; init; }
+    }
     private sealed class CategoryArguments { public string? Category { get; init; } public int? Limit { get; init; } }
     private sealed class PriceArguments
     {

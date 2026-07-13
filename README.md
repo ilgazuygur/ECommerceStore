@@ -387,10 +387,29 @@ of any core commerce flow.
 
 - `IAssistantAiClient` is the provider seam used only by the shopping assistant.
   `MockAssistantAiClient` is the default and requires no API key or network.
+- The mock uses a deterministic English/Turkish intent parser. General
+  recommendations are a small, stable set of active, public, in-stock products
+  ordered by effective price. Best/cheapest comparisons disclose equal-price
+  ties rather than rank them by an unsupported quality signal. The mock does not
+  invent popularity, reviews, ratings, or an objective definition of “best.”
+- Input is Unicode-normalized before classification. Whitespace-only input gets
+  a friendly validation response; meaningless fragments get guidance without a
+  broad catalogue query, while useful short product terms such as `TV`, `PC`,
+  and `4K` remain searchable. Empty searches suggest narrowing or broadening the
+  category, budget, or availability filter instead of returning a dead end.
+- Follow-up comparisons and ordinal references use only the immediately
+  preceding assistant turn when it is still inside the 20-message context
+  window and contains structured product cards. A product follow-up narrows to
+  its returned cards, an explicit search replaces the scope, a no-card reply
+  clears it, and older references expire. Referenced products are always
+  reloaded for current price and stock. Alternative lookups return only active,
+  in-stock products from the recent cards that remain in the referenced item’s
+  current category.
 - `OpenAiCompatibleAssistantClient` optionally calls an OpenAI-compatible
   `/chat/completions` endpoint through `IHttpClientFactory`, including typed tool
   calls, bounded tool loops, safe provider exceptions, timeout handling, and a
-  distinct caller-cancellation path.
+  distinct caller-cancellation path. This real-provider path remains supported
+  and uses the same controlled catalogue tools and server-side card grounding.
 - The provider never receives unrestricted database access. It can request only
   registered, validated, read-only catalogue tools backed by
   `IProductQueryService`; it cannot access users, orders, addresses, carts,
@@ -488,7 +507,7 @@ Run the full suite:
 dotnet test --configuration Release
 ```
 
-**Latest result:** 161 passed, 0 failed, 0 skipped locally on macOS and on each
+**Latest result:** 234 passed, 0 failed, 0 skipped locally on macOS and on each
 GitHub Actions runner: Ubuntu, macOS, and Windows.
 
 See [`docs/FINAL_VERIFICATION.md`](docs/FINAL_VERIFICATION.md) for the full
@@ -528,7 +547,7 @@ build/migration/startup/runtime verification record.
 - Docker is **not** required and is not provided; the local path is the supported
   workflow.
 - Manual Windows browser/runtime verification was not performed. Windows Release
-  build and all 161 tests pass in GitHub Actions.
+  build and all 234 tests pass in GitHub Actions.
 
 ---
 

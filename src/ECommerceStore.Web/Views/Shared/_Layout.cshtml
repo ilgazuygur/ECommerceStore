@@ -77,8 +77,44 @@
         </div>
         <div class="container footer-bottom">&copy; 2026 ECommerceStore. Built with ASP.NET Core.</div>
     </footer>
+    <section class="assistant-widget" data-assistant-widget data-authenticated="@(User.Identity?.IsAuthenticated == true ? "true" : "false")" data-login-url="/account/login">
+        <button class="assistant-launcher" type="button" data-assistant-open aria-expanded="false" aria-controls="shopping-assistant-panel">
+            <span class="assistant-launcher-icon" aria-hidden="true">✦</span>
+            <span>Shopping assistant</span>
+        </button>
+        <div class="assistant-backdrop" data-assistant-close hidden></div>
+        <section id="shopping-assistant-panel" class="assistant-panel" role="dialog" aria-modal="true" aria-labelledby="assistant-title" hidden>
+            <header class="assistant-header">
+                <div>
+                    <span class="assistant-kicker">Live catalogue guide</span>
+                    <h2 id="assistant-title">Shopping assistant</h2>
+                </div>
+                <div class="assistant-header-actions">
+                    <button class="assistant-icon-button" type="button" data-assistant-new aria-label="Start a new conversation">＋</button>
+                    <button class="assistant-icon-button" type="button" data-assistant-close aria-label="Close shopping assistant">×</button>
+                </div>
+            </header>
+            <div class="assistant-shell">
+                <aside class="assistant-sidebar" aria-label="Conversations">
+                    <div class="assistant-sidebar-title">Conversations</div>
+                    <div class="assistant-conversation-list" data-assistant-conversations></div>
+                </aside>
+                <div class="assistant-chat">
+                    <div class="assistant-status" data-assistant-status role="status" aria-live="polite"></div>
+                    <div class="assistant-messages" data-assistant-messages aria-live="polite" aria-relevant="additions"></div>
+                    <form class="assistant-form" data-assistant-form>
+                        @Html.AntiForgeryToken()
+                        <label class="visually-hidden" for="assistant-message-input">Message the shopping assistant</label>
+                        <textarea id="assistant-message-input" data-assistant-input rows="2" maxlength="2000" placeholder="Ask for products, prices, or in-stock options…"></textarea>
+                        <button type="submit" aria-label="Send message">Send</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </section>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/assistant.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

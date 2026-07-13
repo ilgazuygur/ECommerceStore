@@ -13,12 +13,17 @@ using ECommerceStore.Web.Services.Invoices;
 using ECommerceStore.Web.Services.Images;
 using ECommerceStore.Web.Services.Orders;
 using ECommerceStore.Web.Services.Payments;
+using ECommerceStore.Web.Services.Assistant;
+using ECommerceStore.Web.Services.Assistant.Provider;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Infrastructure;
 using System.Globalization;
+using System.Security.Claims;
+using System.Threading.RateLimiting;
+using System.Text.Json;
 using StoreConfiguration = ECommerceStore.Web.Services.Common.StoreOptions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -92,6 +97,10 @@ builder.Services.AddOptions<StoreConfiguration>().BindConfiguration(StoreConfigu
 builder.Services.AddOptions<SmtpOptions>().BindConfiguration(SmtpOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
 builder.Services.AddOptions<UploadOptions>().BindConfiguration(UploadOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
 builder.Services.AddOptions<AIServiceOptions>().BindConfiguration(AIServiceOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
+builder.Services.AddOptions<AssistantOptions>().BindConfiguration(AssistantOptions.SectionName).ValidateDataAnnotations()
+    .Validate(options => options.UsesMock || options.IsRealProviderComplete,
+        "A real assistant provider requires a safe absolute BaseUrl, Model, and ApiKey from user secrets or environment variables.")
+    .ValidateOnStart();
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddSingleton<IOrderNumberGenerator, OrderNumberGenerator>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
@@ -117,6 +126,42 @@ builder.Services.AddScoped<IAdminCategoryService, AdminCategoryService>();
 builder.Services.AddScoped<IAdminOrderService, AdminOrderService>();
 builder.Services.AddScoped<IAdminCustomerService, AdminCustomerService>();
 builder.Services.AddScoped<IOrderConfirmationDispatcher, OrderConfirmationDispatcher>();
+builder.Services.AddScoped<IProductAssistantToolService, ProductAssistantToolService>();
+builder.Services.AddScoped<IShoppingAssistantService, ShoppingAssistantService>();
+builder.Services.AddSingleton<MockAssistantAiClient>();
+builder.Services.AddHttpClient<OpenAiCompatibleAssistantClient>(client => client.Timeout = Timeout.InfiniteTimeSpan);
+builder.Services.AddScoped<IAssistantAiClient>(services =>
+{
+    var options = services.GetRequiredService<Microsoft.Extensions.Options.IOptions<AssistantOptions>>().Value;
+    return options.UsesMock
+        ? services.GetRequiredService<MockAssistantAiClient>()
+        : services.GetRequiredService<OpenAiCompatibleAssistantClient>();
+});
+
+builder.Services.AddAntiforgery(options => options.HeaderName = "RequestVerificationToken");
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("assistant", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 60,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.HttpContext.Response.ContentType = "application/problem+json";
+        await context.HttpContext.Response.WriteAsync(JsonSerializer.Serialize(new ProblemDetails
+        {
+            Status = StatusCodes.Status429TooManyRequests,
+            Title = "Too many assistant requests",
+            Detail = "Wait a moment before trying again."
+        }), token);
+    };
+});
 
 builder.Services.AddControllersWithViews(options =>
 {
@@ -172,7 +217,10 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseSession();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
+
+app.MapControllers();
 
 app.MapControllerRoute(
     name: "areas",
